@@ -1,0 +1,26 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><t t-title/></title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12 col-md-2 bg-light p-3 border-end">
+                <h5>Navigation</h5>
+                <ul class="list-unstyled">
+                    <li><a href="/monitor">Monitor</a></li>
+                    <li><a href="/map">Map</a></li>
+                    <li><a href="/client">Client</a></li>
+                </ul>
+            </div>
+            <div class="col-12 col-md-10 p-3" id="page-content">
+                <t t-out/>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
