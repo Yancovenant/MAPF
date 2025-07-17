@@ -2,14 +2,11 @@ from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
 
-from starlette.responses import JSONResponse
-
 from .AUGV.controller import AGENT_FRAMES
 from .AUGV.obstacle import AGENT_PROCS, AGENT_QUEUES
 import os
 from .tools.decorator import endroute, ROUTES, render_layout
-import threading, psutil, time 
-import socket, json
+import threading, psutil, time
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -71,18 +68,6 @@ async def client_frontend(req: Request):
         content = f.read()
     return render_layout("Client Route Editor", content)
 
-@endroute("/send-routes", methods=["POST"])
-async def send_routes(req: Request):
-    body = await req.json()
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(("localhost", 8051))
-        s.send(json.dumps(body).encode())
-        s.close()
-        return JSONResponse({"status": "ok"})
-    except Exception as e:
-        return JSONResponse({"status": "error", "error": str(e)}, status_code=500)
-
 async def not_found(req: Request, exc):
     with open("webapp/static/xml/page_404.xml", "r", encoding="utf-8") as f:
         content = f.read()
@@ -100,7 +85,7 @@ async def on_shutdown():
             except Exception as e:
                 print(f"Error shutting down agent {agent_id}: {e}")
 
-app = Starlette(routes=ROUTES, debug=False)
+app = Starlette(routes=ROUTES, debug=True)
 app.add_exception_handler(404, not_found)
 app.mount("/static", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 

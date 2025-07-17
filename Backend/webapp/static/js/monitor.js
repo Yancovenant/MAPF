@@ -89,15 +89,18 @@ class AUGVMonitor {
             const img = new Image();
             
             img.onload = () => {
-                canvas.width = img.width;
-                canvas.height = img.height;
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0);
-
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
                 detections.forEach(det => {
-                    const [x, y, w, h] = det.bbox;
+                    // YOLO format: [center_x, center_y, width, height]
+                    const [cx, cy, w, h] = det.bbox;
+                    const left = (cx - w / 2) * (canvas.width / img.width);
+                    const top  = (cy - h / 2) * (canvas.height / img.height);
+                    const boxW = w * (canvas.width / img.width);
+                    const boxH = h * (canvas.height / img.height);
                     ctx.beginPath();
-                    ctx.rect(x, y, w, h);
+                    ctx.rect(left, top, boxW, boxH);
                     ctx.strokeStyle = 'red';
                     ctx.lineWidth = 2;
                     ctx.stroke();

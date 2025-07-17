@@ -2,15 +2,20 @@
 ### webapp/AUGV/controller.py
 ###
 
+"""
+This is the main controller for our webapp AUGV
+it will handle all the websocket and post requests
+"""
+
 from webapp.tools.decorator import endroute
-from webapp.AUGV.obstacle import AUGVYolo, AUGVYoloMP, AGENT_QUEUES, AGENT_STATE, AGENT_OUT_QUEUES
-
+from webapp.AUGV.obstacle import AGENT_QUEUES, AGENT_STATE, AGENT_OUT_QUEUES, AGENT_PROCS, create_agent, GLOBAL_AGENT
 from webapp.tools.config import CONFIG
-from webapp.AUGV.obstacle import AGENT_PROCS, create_agent, GLOBAL_AGENT
 
-import cv2, numpy as np, asyncio, json
+import cv2, numpy as np, asyncio, json, socket
 
 from starlette.websockets import WebSocketDisconnect, WebSocket
+from starlette.responses import JSONResponse
+from starlette.requests import Request
 
 MONITOR_CLIENTS = set()
 AGENT_FRAMES = {}
@@ -116,4 +121,16 @@ async def monitor_ws(ws: WebSocket):
     finally:
         print("Monitor client websocket closed")
         MONITOR_CLIENTS.discard(ws)
-            
+
+# Controller json
+@endroute("/send-routes", methods=["POST"])
+async def send_routes(req: Request):
+    body = await req.json()
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect(("localhost", 8051))
+        s.send(json.dumps(body).encode())
+        s.close()
+        return JSONResponse({"status": "ok"})
+    except Exception as e:
+        return JSONResponse({"status": "error", "error": str(e)}, status_code=500)

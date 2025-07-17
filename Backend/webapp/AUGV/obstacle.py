@@ -2,14 +2,42 @@
 ### webapp/AUGV/obstacle.py
 ###
 
+"""
+This is obstacle detection module for our webapp AUGV
+It is using YOLO Obstacle Detection Model
+It will detect and send the blocked offsets to Unity
+It will also bypassing the obstacle detection if the agent is not using YOLO
+This is important for sending camera from unity to the backend and display it back again to frontend webapp.
+
+...
+
+Dragons:
+>>> Controller from /webapp/AUGV/controller.py
+    - Will handle the AGENT_QUEUES and responsible to @create_agent()
+    - This is to make sure that we are using the right config for the server runnning.
+    - Avoiding any bottleneck and always making sure that the server run for performance.
+>>> Mixin from /webapp/AUGV/obstacle.py
+    - The base class for all agents.
+    - it will handle the obstacle detection and send the blocked offsets to Unity
+    - it will also bypassing the obstacle detection if the agent is not using YOLO
+    - This is important for sending camera from unity to the backend and display it back again to frontend webapp.
+>>> _get_offset() from /webapp/AUGV/obstacle.py
+    - This is the function to calculate the offset of the obstacle.
+    - It is using the camera config from /webapp/tools/config.py
+    - It is using the distance-based bias for dy.
+    - It is using the numba to speed up the calculation.
+    - In simple it will convert camera 3d viewpoint into 2d grid offset from agent/camera position,
+        :dy: forward/backward
+        :dx: left/right
+"""
+
 from webapp.tools.config import CONFIG
 from ultralytics import YOLO
-import threading, queue, numpy as np, math, socket, json, asyncio
+import threading, queue, numpy as np, math, asyncio
 from collections import defaultdict
 from numba import njit
 import multiprocessing
-from webapp.tools.config import CONFIG, get_onnx_session, preprocess_onnx
-import onnxruntime as ort
+from webapp.tools.config import CONFIG, get_onnx_session
 import cv2
 
 AGENT_QUEUES, AGENT_STATE = {}, {}
@@ -76,17 +104,14 @@ class AUGVMixin:
     def _postprocess_pt(self, res, img_h, img_w):
         detections = []
         blocked_offsets = set()
-        print(f"[PT] img_w: {img_w}, img_h: {img_h}")
         for box in getattr(res, "boxes", []):
             if self.model.names[int(box.cls[0])] != "person":
                 continue
             xywh = box.xywh[0].tolist()
             x, y, w, h = xywh
-            print(f"[PT] raw bbox: x={x}, y={y}, w={w}, h={h}")
             feet_x = x
             feet_y = y + h/2
             dx, dy = _get_offset(feet_x, feet_y, img_w, img_h, h)
-            print(f"[PT] mapped bbox: x={x}, y={y}, w={w}, h={h}, feet=({feet_x},{feet_y}), offset=({dx},{dy})")
             blocked_offsets.add((dx, dy) if dx is not None and dy is not None and dy > 0 and dy <= 5 else None)
             detections.append({
                 "label": "person",
@@ -102,19 +127,16 @@ class AUGVMixin:
         blocked_offsets = set()
         conf_thres = CONFIG.get('CONF_THRES', 0.6)
         output = np.squeeze(outputs[0]).T
-        print(f"[ONNX] orig_w: {orig_w}, orig_h: {orig_h}, img_w: {img_w}, img_h: {img_h}, ratio: {ratio}, dw: {dw}, dh: {dh}")
         for det in output:
             cls_id = det[4:].argmax()
             conf_score = det[4:].max()
             if cls_id != 0 or conf_score < conf_thres:
                 continue
             x, y, w, h = det[:4]
-            print(f"[ONNX] raw bbox: x={x}, y={y}, w={w}, h={h}")
             x_mapped = (x - dw) / ratio
             y_mapped = (y - dh) / ratio
             w_mapped = w / ratio
             h_mapped = h / ratio
-            print(f"[ONNX] mapped bbox: x={x_mapped}, y={y_mapped}, w={w_mapped}, h={h_mapped}")
             x_mapped = np.clip(x_mapped, 0, orig_w)
             y_mapped = np.clip(y_mapped, 0, orig_h)
             w_mapped = np.clip(w_mapped, 0, orig_w)
@@ -122,7 +144,6 @@ class AUGVMixin:
             feet_x = x_mapped
             feet_y = y_mapped + h_mapped/2
             dx, dy = _get_offset(feet_x, feet_y, orig_w, orig_h, h_mapped)
-            print(f"[ONNX] feet=({feet_x},{feet_y}), offset=({dx},{dy})")
             blocked_offsets.add((dx, dy) if dx is not None and dy is not None and dy > 0 and dy <= 5 else None)
             detections.append({
                 "label": "person",
@@ -176,7 +197,8 @@ class AUGVMixin:
 
         # copy make border to add padding to the image
         img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
-        cv2.imwrite("letterbox.jpg", img)
+        ## DEBUG
+        # cv2.imwrite("letterbox.jpg", img)
         return img, ratio, (dw, dh)
 
 
@@ -201,41 +223,11 @@ class AUGVYolo(threading.Thread, AUGVMixin):
                 frame = self.q.get()
                 if frame is None:
                     continue
-
-                # image = np.ascontiguousarray(frame)
-                # img_h, img_w = image.shape[:2]
-
                 detections, blocked_offsets = self._process_frame(frame)
-
-                # res = list(model.predict(image, conf=0.6, verbose=False, stream=True))[0]
-
-                # detections = []
-                # blocked_offsets = set()
-
-                # for box in getattr(res, "boxes", []):
-                #     if model.names[int(box.cls[0])] != "person":
-                #         continue
-
-                #     xywh = box.xywh[0].tolist()
-                #     x, y, w, h = xywh
-
-                #     feet_x = x
-                #     feet_y = y + h/2
-                #     dx, dy = _get_offset(feet_x, feet_y, img_w, img_h, h)
-
-                #     offset = (dx, dy) if dx is not None and dy is not None and dy > 0 and dy <= 5 else None
-                #     blocked_offsets.add(offset)
-
-                #     detections.append({
-                #         "label": "person",
-                #         "confidence": round(float(box.conf[0]), 3),
-                #         "bbox": [round(v, 2) for v in xywh],
-                #         "feet": [feet_x, feet_y],
-                #         "offset": [dx, dy]
-                #     })
                 
-                if blocked_offsets:
+                if blocked_offsets and self.last_detection != blocked_offsets:
                     _send_to_unity(self.agent_id, blocked_offsets)
+                    self.last_detection = blocked_offsets.copy()
                 
                 AGENT_STATE[self.agent_id] = {
                     "status": "blocked" if blocked_offsets else "safe",
@@ -272,37 +264,9 @@ class AUGVYoloMP(multiprocessing.Process, AUGVMixin):
 
                 detections, blocked_offsets = self._process_frame(frame)
 
-                # image = np.ascontiguousarray(frame)
-                # img_h, img_w = image.shape[:2]
-
-                # res = list(model.predict(image, conf=0.6, verbose=False, stream=True))[0]
-
-                # detections = []
-                # blocked_offsets = set()
-
-                # for box in getattr(res, "boxes", []):
-                #     if model.names[int(box.cls[0])] != "person":
-                #         continue
-                    
-                #     xywh = box.xywh[0].tolist()
-                #     x, y, w, h = xywh
-                #     feet_x = x
-                #     feet_y = y + h/2
-                #     dx, dy = _get_offset(feet_x, feet_y, img_w, img_h, h)
-
-                #     offset = (dx, dy) if dx is not None and dy is not None and dy > 0 and dy <= 5 else None
-                #     blocked_offsets.add(offset)
-
-                #     detections.append({
-                #         "label": "person",
-                #         "confidence": round(float(box.conf[0]), 3),
-                #         "bbox": [round(v, 2) for v in xywh],
-                #         "feet": [feet_x, feet_y],
-                #         "offset": [dx, dy]
-                #     })
-                
-                if blocked_offsets:
+                if blocked_offsets and self.last_detection != blocked_offsets:
                     _send_to_unity(self.agent_id, blocked_offsets)
+                    self.last_detection = blocked_offsets.copy()
                 
                 AGENT_STATE[self.agent_id] = {
                     "status": "blocked" if blocked_offsets else "safe",
@@ -311,6 +275,8 @@ class AUGVYoloMP(multiprocessing.Process, AUGVMixin):
                 }
             except Exception as e:
                 print(f"Error in AgentYoloMP for agent {self.agent_id}: {e}")
+                AGENT_STATE[self.agent_id]['status'] = 'error'
+                break
 
 #### ONNX
 class AUGVOnnx(threading.Thread, AUGVMixin):
@@ -329,12 +295,6 @@ class AUGVOnnx(threading.Thread, AUGVMixin):
 
                 detections, blocked_offsets = self._process_frame(frame)
 
-                # image = np.ascontiguousarray(frame)
-                # img_h, img_w = image.shape[:2]
-                # x = preprocess_onnx(image)
-                # outputs = self.ort_sess.run(None, {self.input_name: x})
-                # detections, blocked_offsets = postprocess_onnx(outputs, img_h, img_w)
-                
                 if blocked_offsets and self.last_detection != blocked_offsets:
                     _send_to_unity(self.agent_id, blocked_offsets)
                     self.last_detection = blocked_offsets.copy()
@@ -347,6 +307,7 @@ class AUGVOnnx(threading.Thread, AUGVMixin):
             except Exception as e:
                 print(f"Error in AgentOnnx for agent {self.agent_id}: {e}")
                 AGENT_STATE[self.agent_id]['status'] = 'error'
+                break
 
 class AUGVOnnxMP(multiprocessing.Process, AUGVMixin):
     def __init__(self, agent_id):
@@ -364,11 +325,6 @@ class AUGVOnnxMP(multiprocessing.Process, AUGVMixin):
                 frame = self.q.get()
                 if frame is None:
                     break
-                # image = np.ascontiguousarray(frame)
-                # img_h, img_w = image.shape[:2]
-                # x = preprocess_onnx(image)
-                # outputs = self.ort_sess.run(None, {self.input_name: x})
-                # detections, blocked_offsets = postprocess_onnx(outputs, img_h, img_w)
                 
                 detections, blocked_offsets = self._process_frame(frame)
 
@@ -384,36 +340,7 @@ class AUGVOnnxMP(multiprocessing.Process, AUGVMixin):
             except Exception as e:
                 print(f"Error in AgentOnnxMP for agent {self.agent_id}: {e}")
                 AGENT_STATE[self.agent_id]['status'] = 'error'
-
-def postprocess_onnx(outputs, img_h, img_w, conf_thres=None):
-    conf_thres = conf_thres or 0.6
-    detections = []
-    blocked_offsets = set()
-    output = outputs[0]
-    if output.ndim == 3:
-        output = output[0]
-    for det in output:
-        x, y, w, h, obj_conf = det[:5]
-        class_score = det[5:]
-        cls_id = int(np.argmax(class_score))
-        conf = obj_conf * class_score[cls_id]
-        if conf < conf_thres:
-            continue
-        if cls_id != 0:
-            continue
-        feet_x = x
-        feet_y = y + h/2
-        dx, dy = _get_offset(feet_x, feet_y, img_w, img_h, h)
-        blocked_offsets.add((dx, dy) if dx is not None and dy is not None and dy > 0 and dy <= 5 else None)
-        detections.append({
-            "label": "person",
-            "confidence": round(float(conf), 3),
-            "bbox": [round(float(v), 2) for v in [x, y, w, h]],
-            "feet": [float(feet_x), float(feet_y)],
-            "offset": [int(dx), int(dy)]
-        })
-    blocked_offsets = set([b for b in blocked_offsets if b is not None])
-    return detections, blocked_offsets
+                break
 
 def create_agent(agent_id):
     backend = CONFIG.get('BACKEND', 'pt')
@@ -430,6 +357,25 @@ def create_agent(agent_id):
             return AUGVOnnxMP(agent_id)
     else:
         raise ValueError(f"Invalid backend: {backend}")
+
+#@debounce(1)
+def _send_to_unity(agent_id, blocked):
+    valid = [offset for offset in blocked if offset is not None and offset[0] == 0 and offset[1] != 0]
+    if not valid:
+        return
+    
+    try:
+        print(f"Sending to Unity for agent {agent_id}: {valid}")
+        AGENT_OUT_QUEUES[agent_id].put_nowait({
+            "action": "obstacle",
+            "data": {
+                "agent_id": agent_id,
+                "blocked": valid
+            }
+        })
+    except Exception as e:
+        print(f"Error sending to Unity for agent {agent_id}: {e}")
+
 
 ## important for performance
 """
@@ -499,29 +445,3 @@ def _get_offset(feet_x, feet_y, img_w, img_h, h):
     dx = int(round(world_x / _grid_size)) # Left/Right
     return dx, dy
 
-#@debounce(1)
-def _send_to_unity(agent_id, blocked):
-    valid = [offset for offset in blocked if offset is not None and offset[0] == 0 and offset[1] != 0]
-    if not valid:
-        return
-    
-    try:
-        print(f"Sending to Unity for agent {agent_id}: {valid}")
-        AGENT_OUT_QUEUES[agent_id].put_nowait({
-            "action": "obstacle",
-            "data": {
-                "agent_id": agent_id,
-                "blocked": valid
-            }
-        })
-        # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        #     print(f"Sending to Unity for agent {agent_id}: {valid}")
-        #     s.sendto(json.dumps({
-        #         "action": "obstacle",
-        #         "data": {
-        #             "agent_id": agent_id,
-        #             "blocked": valid
-        #         }
-        #     }).encode(), (UNITY_HOST, UNITY_PORT))
-    except Exception as e:
-        print(f"Error sending to Unity for agent {agent_id}: {e}")

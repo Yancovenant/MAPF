@@ -1,5 +1,17 @@
 # webapp/tools/config.py
 
+"""
+This is the config module for our webapp AUGV
+It will handle the config before the server runnning.
+It will find the best recommendation setting for both server and unity for maximum performance.
+It will also handle the camera config for the obstacle detection.
+
+...
+
+If .recommend_cache.json is not found, it will ask for user input to test the environment setup.
+else it will use the cached setting and ask for user input to retest the environment setup.
+"""
+
 import torch
 import os
 from ultralytics import YOLO
@@ -183,7 +195,7 @@ def recommend_settings():
         for k, v in cache.items():
             print(f"{k}: {v}")
         ans = input("Do you want to retest env setup? (yes/no): ").strip().lower()
-        if ans == 'no':
+        if ans == 'no' or ans != 'yes':
             CONFIG.update(cache)
             print("\n>>> Using cached recommended settings:")
             for k, v in cache.items():
