@@ -1,0 +1,67 @@
+# Ignore Everything
+/*
+
+# Except
+!Backend/
+!Assets/Scripts/
+
+# --- /Backend Ignores --
+# Byte-compiled / optimized / DLL files
+Backend/__pycache__/
+Backend/*.py[cod]
+Backend/*$py.class
+
+# C extensions
+Backend/*.so
+
+# Distribution / packaging
+Backend/.Python
+Backend/build/
+Backend/develop-eggs/
+Backend/dist/
+Backend/downloads/
+Backend/eggs/
+Backend/.eggs/
+Backend/lib/
+Backend/lib64/
+Backend/parts/
+Backend/sdist/
+Backend/var/
+Backend/*.egg-info/
+Backend/.installed.cfg
+Backend/*.egg
+
+# Virtual environments
+Backend/.venv/
+Backend/venv/
+Backend/ENV/
+Backend/env/
+Backend/env.bak/
+Backend/venv.bak/
+
+# Pytest
+Backend/.pytest_cache/
+Backend/.cache/
+Backend/.benchmarks/
+
+# Debug, logs, and temp files
+Backend/debug_yolo_images/
+Backend/AUGV_Backend.egg-info/
+Backend/letterbox.jpg
+Backend/*.log
+
+# Editor directories and files
+Backend/.vscode/
+Backend/.idea/
+Backend/*.sublime-workspace
+Backend/*.sublime-project
+
+# OS files
+Backend/.DS_Store
+Backend/Thumbs.db
+
+# Misc
+Backend/.recommend_cache.json
+
+# Node modules (npm/yarn in static/)
+Backend/node_modules/
