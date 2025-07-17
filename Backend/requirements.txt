@@ -1,0 +1,15 @@
+opencv-python
+ultralytics
+starlette
+psutil
+uvicorn[standard]
+websockets
+wsproto
+opencv-python-headless
+pytest
+pytest-asyncio
+pytest-benchmark
+numba
+httpx
+onnxruntime
+onnxruntime-gpu

@@ -1,0 +1,65 @@
+<style>
+    .grid { display: grid; grid-template-columns: repeat(44, 1fr);}
+    .cell {
+        aspect-ratio: 1/1;
+        width: 100%;
+        min-width: 1.5rem;
+        line-height: 1.5rem;
+        text-align: center;
+        font-size: 10px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .cell.B { background-color: #007BFF; }
+    .cell.R { background-color: #6c757d; }
+    .cell.W { background-color: #fd7e14; }
+    .cell.M { background-color: #198754; }
+    .cell.dot { background-color: #f8f9fa; }
+    .palette .btn { width: 100%; margin-bottom: 5px; }
+    .cell.ghost {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+</style>
+<div class="container-fluid">
+    <div class="row">
+    <h2>Map Editor</h2>
+    <p>Edit the map layout visually.</p>
+      <!-- Palette -->
+      
+      <div class="col-md-2">
+        <h5>Tile Palette</h5>
+        <div class="palette">
+          <button class="btn btn-secondary w-100 btn-sm select-tile" data-tile="R">Road (R)</button>
+          <button class="btn btn-primary w-100 btn-sm select-tile" data-tile="B">Building (B)</button>
+          <button class="btn btn-warning w-100 btn-sm select-tile" data-tile="W">Warehouse (W 3x3)</button>
+          <button class="btn btn-success w-100 btn-sm select-tile" data-tile="M">Mat (M)</button>
+          <button class="btn btn-light w-100 btn-sm select-tile" data-tile=".">Empty (.)</button>
+        </div>
+
+        <div class="hstack mt-3">
+            <button class="btn btn-outline-success" id="export">Export JSON</button>
+            <button class="btn btn-outline-primary" id="import">Import JSON</button>
+        </div>
+        <button class="btn btn-danger mt-2" id="clearMap">Clear Map</button>
+        <div class="vstack mt-3">
+            <select class="form-select" id="layoutSelector">
+                <option disabled selected>-- Select Layout --</option>
+            </select>
+            <input type="text" class="form-control" id="layoutName" placeholder="Layout name">
+            <div class="hstack mt-3">
+                <button class="btn btn-outline-primary" id="saveLayout">Save</button>
+                <button class="btn btn-outline-danger" id="deleteLayout">Delete</button>
+            </div>
+        </div>
+
+        <textarea id="jsonOutput" class="form-control mt-2" rows="10" placeholder="Map JSON here..."></textarea>
+      </div>
+
+      <!-- Grid -->
+      <div class="col-md-10">
+        <h5>Edit Map</h5>
+        <div id="grid" class="grid overflow-auto"></div>
+      </div>
+    </div>
+  </div>
+<script src="/static/js/map_editor.js"></script>

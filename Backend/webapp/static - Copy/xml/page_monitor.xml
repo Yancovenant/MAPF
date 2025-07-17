@@ -1,0 +1,10 @@
+<style>
+    .agent { padding: 10px; background: #fff; border-radius: 5px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .agent-name { font-weight: bold; margin-bottom: 5px; }
+    canvas { border: 1px solid #ccc; width: 100%; height: auto; display: block; }
+</style>
+<h2>YOLO Monitor</h2>
+<div class="row g-3" id="agents">
+  <t t-agents/>
+</div>
+<script src="/static/js/monitor.js"></script>

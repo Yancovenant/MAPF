@@ -1,0 +1,17 @@
+__pycache__/
+.benchmarks/
+.pytest_cache/
+# tests/
+AUGV_Backend.egg-info/
+*.egg-info/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.tmp
+*.swp
+.DS_Store
+.vscode/
+.git/ 
