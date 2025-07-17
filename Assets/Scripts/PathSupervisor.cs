@@ -217,6 +217,7 @@ public class PathSupervisor : MonoBehaviour {
                 }
             }
         }
+        occupiedNodes.UnionWith(yoloObstacles.Keys);
     }
 
     #region Conflict Resolve
@@ -588,11 +589,24 @@ public class PathSupervisor : MonoBehaviour {
             Gizmos.DrawWireSphere(agent.transform.position + Vector3.up * 1.5f, 0.5f);
         }
         if (activePaths == null || activePaths.Count == 0) return;
-        foreach (var path in activePaths) {
-            Gizmos.color = Color.white;
-            foreach (var node in path.Value) {
-                Gizmos.DrawSphere(node.worldPosition, 0.1f);
+
+        int colorIdx = 0;
+        foreach (var kvp in activePaths) {
+            var path = kvp.Value;
+            Color pathColor = agentColors[colorIdx % agentColors.Length];
+            Gizmos.color = pathColor;
+            for (int i = 0; i < path.Count; i++) {
+                Gizmos.DrawSphere(path[i].worldPosition, 0.1f);
+                if (i < path.Count - 1) {
+                    Gizmos.DrawLine(path[i].worldPosition, path[i + 1].worldPosition);
+                }
             }
+            colorIdx++;
+        }
+
+        foreach (var n in occupiedNodes) {
+            Gizmos.color = Color.red;
+            Gizmos.DrawCube(n.worldPosition + Vector3.up * 0.1f, new Vector3(1f, 0.1f, 1f));
         }
     }
 }
