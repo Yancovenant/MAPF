@@ -56,17 +56,15 @@ public class PathSupervisor : MonoBehaviour {
         agents = FindObjectsByType<AUGV>(FindObjectsSortMode.None);
         // cameraCaptures = FindObjectsByType<CameraCapture>(FindObjectsSortMode.None);
 
-        // Subscribe to YOLO toggle changes
-        if (GlobalConfig.Instance != null)
-            GlobalConfig.Instance.OnAgentYoloToggleChanged += OnAgentYoloToggleChanged;
-    }
-
-    private void OnAgentYoloToggleChanged(string agentId, bool useYolo) {
-        var agent = agents.FirstOrDefault(a => a.name == agentId);
-        if (agent != null) {
-            Debug.Log($"PathSupervisor: Agent {agentId} using yolo: {useYolo}");
-            var camCap = agent.GetComponentInChildren<CameraCapture>();
-            if (camCap != null) camCap.SetYoloActive(useYolo);
+        if (GlobalConfig.Instance != null) {
+            foreach (var agent in agents) {
+                if (!GlobalConfig.Instance.agentYoloConfigs.Exists(a => a.agentId == agent.name)) {
+                    GlobalConfig.Instance.agentYoloConfigs.Add(new GlobalConfig.AgentYoloConfig {
+                        agentId = agent.name,
+                        useYolo = false
+                    });
+                }
+            }
         }
     }
 

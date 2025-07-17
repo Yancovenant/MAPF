@@ -35,11 +35,5 @@ public class AUGVSpawner : MonoBehaviour {
             spawnPointObj.transform.position = spawnPoint;
             spawnPointObj.transform.parent = spawnContainer.transform;
         }
-        // After all agents are spawned, update GlobalConfig agent list
-        if (GlobalConfig.Instance != null) {
-            var agentIds = new List<string>();
-            foreach (var ag in agents) agentIds.Add(ag.name);
-            GlobalConfig.Instance.UpdateAgentList(agentIds);
-        }
     }
 }

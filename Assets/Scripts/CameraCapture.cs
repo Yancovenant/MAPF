@@ -25,7 +25,6 @@ public class CameraCapture : MonoBehaviour {
     private int resolutionHeight;
     private int jpegQuality;
     private int targetedFps;
-    private bool yoloActive = false;
     private float lastSendTime = 0f;
 
     private bool running = false;
@@ -39,7 +38,6 @@ public class CameraCapture : MonoBehaviour {
         resolutionHeight = config.resolutionHeight;
         jpegQuality = config.jpegQuality;
         targetedFps = config.targetedFps;
-        yoloActive = config.GetAgentYolo(agentId);
 
         var isDeployed = serverUrl.StartsWith("https://");
         var wsProtocol = isDeployed ? "wss" : "ws";
@@ -71,10 +69,6 @@ public class CameraCapture : MonoBehaviour {
     }
 
     void Update() => ws?.DispatchMessageQueue();
-
-    public void SetYoloActive(bool active) {
-        yoloActive = active;
-    }
 
     public async void TrySendImageAndResponse() {
         if (!running || ws == null || ws.State != WebSocketState.Open) return;
