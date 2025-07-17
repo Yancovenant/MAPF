@@ -74,6 +74,7 @@ async def not_found(req: Request, exc):
     return render_layout("Yolo 404", content)
 
 async def on_shutdown():
+    """ This function is called when the server is shutting down, to make sure all processes and queues are closed. """
     print("Shutting down all processes and queues...")
     for agent_id, proc in list(AGENT_PROCS.items()):
         q = AGENT_QUEUES.get(agent_id)

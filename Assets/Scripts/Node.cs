@@ -1,7 +1,18 @@
 /**
-* === Scripts/Node.cs ===
+* <summary>
+* <c>Scripts/Node.cs</c>
 * Node class for pathfinding.
+* </summary>
+* <returns>
+* <c>Node = (
+    <param name="walkable">bool: Whether the node is walkable.</param>
+    <param name="worldPosition">Vector3: The world position of the node.</param>
+    <param name="gridX">int: The x coordinate of the node in the grid.</param>
+    <param name="gridY">int: The y coordinate of the node in the grid.</param>
+)</c>
+* </returns>
 */
+
 
 using UnityEngine;
 
