@@ -91,7 +91,6 @@ public class PathSupervisor : MonoBehaviour {
     }
     
     public void AssignObstacleFromJSON(Dictionary<string, object> parsed) {
-        Debug.Log($"PathSupervisor: Assigning obstacle from JSON: {parsed["agent_id"]}, {parsed["blocked"]}");
         if (!parsed.TryGetValue("agent_id", out var agentId) ||
             !parsed.TryGetValue("blocked", out var blockedOffsets) ||
             !(blockedOffsets is List<object> offsetLists)) return;
@@ -109,7 +108,7 @@ public class PathSupervisor : MonoBehaviour {
                     Vector3 worldPosition = agent.transform.position +
                         agent.transform.forward * dy +
                         agent.transform.right * dx;
-                    
+                    Debug.Log($"PathSupervisor: Offset {dx}, {dy}");
                     Node node = grid.NodeFromWorldPoint(worldPosition);
                     Node agentNode = grid.NodeFromWorldPoint(agent.transform.position);
                     if (node != null && // if the node is not null and has a value.
@@ -225,6 +224,17 @@ public class PathSupervisor : MonoBehaviour {
                 }
             }
         }
+
+        // ? This is to remove the expired yolo obstacles after timeout.
+        float currentTime = Time.time;
+        foreach (var expired in yoloObstacles
+            .Where(t => currentTime - t.Value > GlobalConfig.Instance.YOLO_OBSTACLE_TIMEOUT)
+            .Select(t => t.Key)
+            .ToList()) {
+                yoloObstacles.Remove(expired);
+                expired.walkable = true;
+            }
+
         occupiedNodes.UnionWith(yoloObstacles.Keys);
     }
 
@@ -591,6 +601,13 @@ public class PathSupervisor : MonoBehaviour {
 
     void OnDrawGizmos() {
         if (agents == null) return;
+
+        foreach (var n in yoloObstacles.Keys) {
+            // Need to be here, otherwise it would be bypassed by the other gizmos return logic.
+            Gizmos.color = Color.red;
+            Gizmos.DrawCube(n.worldPosition + Vector3.up * 0.1f, new Vector3(1f, 0.1f, 1f));
+        }
+
         foreach (var agent in agents) {
             var isYolo = GlobalConfig.Instance != null && GlobalConfig.Instance.GetAgentYolo(agent.name);
             Gizmos.color = isYolo ? Color.green : Color.white;

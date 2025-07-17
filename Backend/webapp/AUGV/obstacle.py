@@ -200,6 +200,12 @@ class AUGVMixin:
         ## DEBUG
         # cv2.imwrite("letterbox.jpg", img)
         return img, ratio, (dw, dh)
+    
+    def _send_to_unity(self, agent_id, blocked):
+        if self.last_detection == blocked:
+            return
+        _send_to_unity(agent_id, blocked)
+        self.last_detection = blocked.copy()
 
 
 class AUGVYolo(threading.Thread, AUGVMixin):
@@ -264,9 +270,8 @@ class AUGVYoloMP(multiprocessing.Process, AUGVMixin):
 
                 detections, blocked_offsets = self._process_frame(frame)
 
-                if blocked_offsets and self.last_detection != blocked_offsets:
-                    _send_to_unity(self.agent_id, blocked_offsets)
-                    self.last_detection = blocked_offsets.copy()
+                if blocked_offsets:
+                    self._send_to_unity(self.agent_id, blocked_offsets)
                 
                 AGENT_STATE[self.agent_id] = {
                     "status": "blocked" if blocked_offsets else "safe",
@@ -295,9 +300,8 @@ class AUGVOnnx(threading.Thread, AUGVMixin):
 
                 detections, blocked_offsets = self._process_frame(frame)
 
-                if blocked_offsets and self.last_detection != blocked_offsets:
-                    _send_to_unity(self.agent_id, blocked_offsets)
-                    self.last_detection = blocked_offsets.copy()
+                if blocked_offsets:
+                    self._send_to_unity(self.agent_id, blocked_offsets)
 
                 AGENT_STATE[self.agent_id] = {
                     "status": "blocked" if blocked_offsets else "safe",
@@ -327,11 +331,10 @@ class AUGVOnnxMP(multiprocessing.Process, AUGVMixin):
                     break
                 
                 detections, blocked_offsets = self._process_frame(frame)
-
-                if blocked_offsets and self.last_detection != blocked_offsets:
-                    _send_to_unity(self.agent_id, blocked_offsets)
-                    self.last_detection = blocked_offsets.copy()
                 
+                if blocked_offsets:
+                    self._send_to_unity(self.agent_id, blocked_offsets)
+
                 AGENT_STATE[self.agent_id] = {
                     "status": "blocked" if blocked_offsets else "safe",
                     "detections": detections,
@@ -360,7 +363,8 @@ def create_agent(agent_id):
 
 #@debounce(1)
 def _send_to_unity(agent_id, blocked):
-    valid = [offset for offset in blocked if offset is not None and offset[0] == 0 and offset[1] != 0]
+    # valid = [offset for offset in blocked if offset is not None and offset[0] == 0 and offset[1] != 0]
+    valid = [offset for offset in blocked if offset is not None and offset[1] != 0]
     if not valid:
         return
     
@@ -442,6 +446,6 @@ def _get_offset(feet_x, feet_y, img_w, img_h, h):
         bias = 1.2 # Very Far Object
     
     dy = int(round(world_z + bias) / _grid_size) # Forward/Backward
-    dx = int(round(world_x / _grid_size)) # Left/Right
+    dx = int(round(world_x + bias) / _grid_size) # Left/Right
     return dx, dy
 

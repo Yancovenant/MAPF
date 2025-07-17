@@ -79,6 +79,7 @@ public class CameraCapture : MonoBehaviour {
         var param = new Dictionary<string, object> {
             {"useYolo", yoloTrue}
         };
+
         string headerJson = MiniJSON.Json.Serialize(param);
         byte[] headerBytes = System.Text.Encoding.UTF8.GetBytes(headerJson);
         byte[] delimiter = System.Text.Encoding.UTF8.GetBytes("\n");
