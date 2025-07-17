@@ -4,6 +4,14 @@
 * and coordinating between agents.
 */
 
+/**
+* <summary>
+* <c>Scripts/PathSupervisor.cs</c>
+* This script is responsible for managing the path planning and execution,
+* and coordinating between agents.
+* </summary>
+*/
+
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
