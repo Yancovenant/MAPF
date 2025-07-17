@@ -5,6 +5,9 @@
 !Backend/
 !Assets/Scripts/
 
+# --- /Assets Ignores ---
+Assets/Scripts/*.meta
+
 # --- /Backend Ignores --
 # Byte-compiled / optimized / DLL files
 Backend/__pycache__/
