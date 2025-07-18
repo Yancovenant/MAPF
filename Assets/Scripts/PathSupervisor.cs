@@ -89,41 +89,60 @@ public class PathSupervisor : MonoBehaviour {
             _assignNewPathsToIdleAgents();
         }
     }
-    
+
     public void AssignObstacleFromJSON(Dictionary<string, object> parsed) {
+        // TODO: change this into UnityCamera.ScreenToWorldPoint
+        // Expecting feet_x, feet_y. 
+        // I think feet_x, feet_y in my obstacle.py
+        // is using the center_x, center_y from yolo detection, but im not sure.
         if (!parsed.TryGetValue("agent_id", out var agentId) ||
             !parsed.TryGetValue("blocked", out var blockedOffsets) ||
-            !(blockedOffsets is List<object> offsetLists)) return;
+            !(blockedOffsets is List<object> pixelList)) return;
         
         var agent = agents.FirstOrDefault(a => a.name == agentId.ToString());
-        if (agent != null) {
-            float currentTime = Time.time;
+        if (agent == null) return;
 
-            foreach (var off in offsetLists.OfType<List<object>>()) {
-                if (off.Count < 2) continue;
-                if (int.TryParse(off[0].ToString(), out var dx) &&
-                    int.TryParse(off[1].ToString(), out var dy)) {
-                        if (dx == 0 && dy == 0) continue;
-                    
-                    Vector3 worldPosition = agent.transform.position +
-                        agent.transform.forward * dy +
-                        agent.transform.right * dx;
-                    Debug.Log($"PathSupervisor: Offset {dx}, {dy}");
-                    Node node = grid.NodeFromWorldPoint(worldPosition);
-                    Node agentNode = grid.NodeFromWorldPoint(agent.transform.position);
-                    if (node != null && // if the node is not null and has a value.
-                        node != agentNode && // if the node is not the same as the agent node.
-                        !yoloObstacles.ContainsKey(node) && // if the node is not in the yoloObstacles dictionary.
-                        node.walkable && // if the node is walkable.
-                        currentTime - last_update_time > 0.5f) { // debounce the update.
-                            yoloObstacles[node] = currentTime;
-                            last_update_time = currentTime;
-                            node.walkable = false; // to make sure any new path find will not use this node.
-                            Debug.Log($"PathSupervisor: Agent {agent.name} detected obstacle at {node.worldPosition.x}, {node.worldPosition.z}");
-                        }
-                }
-            }
+        var cam = agent.GetComponentInChildren<CameraCapture>();
+        if (cam == null) return;
+
+        float now = Time.time;
+        foreach (var item in pixelList) {
+            if (!(item is List<object> coords) || coords.Count < 2) continue;
+            // [feet_x, feet_y]
+            if (!float.TryParse(coords[0].ToString(), out float feet_x)) continue;
+            if (!float.TryParse(coords[1].ToString(), out float feet_y)) continue;
+
+            
         }
+
+        // if (agent != null) {
+        //     float currentTime = Time.time;
+
+        //     foreach (var off in offsetLists.OfType<List<object>>()) {
+        //         if (off.Count < 2) continue;
+        //         if (int.TryParse(off[0].ToString(), out var dx) &&
+        //             int.TryParse(off[1].ToString(), out var dy)) {
+        //                 if (dx == 0 && dy == 0) continue;
+                    
+        //             Vector3 worldPosition = agent.transform.position +
+        //                 agent.transform.forward * dy +
+        //                 agent.transform.right * dx;
+        //             Debug.Log($"PathSupervisor: Offset {dx}, {dy}");
+        //             Node node = grid.NodeFromWorldPoint(worldPosition);
+        //             Node agentNode = grid.NodeFromWorldPoint(agent.transform.position);
+        //             if (node != null && // if the node is not null and has a value.
+        //                 node != agentNode && // if the node is not the same as the agent node.
+        //                 !yoloObstacles.ContainsKey(node) && // if the node is not in the yoloObstacles dictionary.
+        //                 node.walkable && // if the node is walkable.
+        //                 currentTime - last_update_time > 0.5f) { // debounce the update.
+        //                     yoloObstacles[node] = currentTime;
+        //                     last_update_time = currentTime;
+        //                     node.walkable = false; // to make sure any new path find will not use this node.
+        //                     Debug.Log($"PathSupervisor: Agent {agent.name} detected obstacle at {node.worldPosition.x}, {node.worldPosition.z}");
+        //                 }
+        //         }
+        //     }
+        // }
     }
 
     void Update() {
