@@ -112,7 +112,14 @@ public class PathSupervisor : MonoBehaviour {
             if (!float.TryParse(coords[0].ToString(), out float feet_x)) continue;
             if (!float.TryParse(coords[1].ToString(), out float feet_y)) continue;
 
-            
+            Ray ray = cam.ScreenPointToRay(new Vector3(feet_x, feet_y, 0));
+            if (Physics.Raycast(ray, out RaycastHit hit, 100f, LayerMask.GetMask("Ground"))) {
+                Node node = grid.NodeFromWorldPoint(hit.point);
+                Debug.Log($"PathSupervisor Yolo Ray Casted: Node {node.worldPosition}");
+                if (node != null) {
+                    yoloObstacles[node] = now;
+                }
+            }
         }
 
         // if (agent != null) {
