@@ -21,7 +21,7 @@ Dragons:
     - it will handle the obstacle detection and send the blocked offsets to Unity
     - it will also bypassing the obstacle detection if the agent is not using YOLO
     - This is important for sending camera from unity to the backend and display it back again to frontend webapp.
->>> _get_offset() from /webapp/AUGV/obstacle.py
+>>> [deprecated] _get_offset() from /webapp/AUGV/obstacle.py
     - This is the function to calculate the offset of the obstacle.
     - It is using the camera config from /webapp/tools/config.py
     - It is using the distance-based bias for dy.
@@ -29,6 +29,13 @@ Dragons:
     - In simple it will convert camera 3d viewpoint into 2d grid offset from agent/camera position,
         :dy: forward/backward
         :dx: left/right
+>>> [New] _send_to_unity_feet() from /webapp/AUGV/obstacle.py
+    - Immediately send the feet list to Unity.
+    - Yolo (0, 0) is top left.
+    - feet_x => center_x
+    - feet_y => center_y + half_det_height
+    -> Will result in the middle and very bottom of bbox detections.
+    - And we let unity to decide the offset from the feet list using RayCast.
 """
 
 from webapp.tools.config import CONFIG
