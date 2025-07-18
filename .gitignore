@@ -11,7 +11,7 @@ Assets/Scripts/*.asmdef
 
 # --- /Backend Ignores --
 # Byte-compiled / optimized / DLL files
-Backend/__pycache__/
+Backend/**/__pycache__/
 Backend/*.py[cod]
 Backend/*$py.class
 
