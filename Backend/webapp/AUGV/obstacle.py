@@ -77,16 +77,17 @@ class AUGVMixin:
     def _process_frame(self, frame):
         detections = []
         blocked_offsets = set()
+        feet_list = []
 
         if not self.use_yolo:
-            return detections, blocked_offsets
+            return detections, blocked_offsets, feet_list
         if self.onnx:
             if not hasattr(self, 'ort_sess') or not hasattr(self, 'input_name'):
                 raise ValueError("ORT session and input name must be set for onnx")
             orig_h, orig_w = frame.shape[:2]
             image, ratio, (dw, dh) = self._preprocess_onnx_image(frame)
             outputs = self.ort_sess.run(None, {self.input_name: image}) # type: ignore[attr-defined]
-            detections, blocked_offsets = self._postprocess_onnx(outputs, 640, 640, ratio, dw, dh, orig_w, orig_h)
+            detections, blocked_offsets, feet_list = self._postprocess_onnx(outputs, 640, 640, ratio, dw, dh, orig_w, orig_h)
         else:
             if not hasattr(self, 'model'):
                 raise ValueError("YOLO model must be set for pt inference")
@@ -95,15 +96,16 @@ class AUGVMixin:
             img_h, img_w = image.shape[:2]
             res = list(self.model.predict(image, conf=conf_thres, verbose=False, stream=True))[0] # type: ignore[attr-defined]
 
-            detections, blocked_offsets = self._postprocess_pt(res, img_h, img_w)
+            detections, blocked_offsets, feet_list = self._postprocess_pt(res, img_h, img_w)
         
         blocked_offsets = set([b for b in blocked_offsets if b is not None])
 
-        return detections, blocked_offsets
+        return detections, blocked_offsets, feet_list
 
     def _postprocess_pt(self, res, img_h, img_w):
         detections = []
         blocked_offsets = set()
+        feet_list = []
         for box in getattr(res, "boxes", []):
             if self.model.names[int(box.cls[0])] != "person":
                 continue
@@ -111,20 +113,22 @@ class AUGVMixin:
             x, y, w, h = xywh
             feet_x = x
             feet_y = y + h/2
-            dx, dy = _get_offset(feet_x, feet_y, img_w, img_h, h)
-            blocked_offsets.add((dx, dy) if dx is not None and dy is not None and dy > 0 and dy <= 5 else None)
+            feet_list.append((feet_x, feet_y) if feet_x is not None and feet_y is not None else None)
+            # dx, dy = _get_offset(feet_x, feet_y, img_w, img_h, h)
+            # blocked_offsets.add((dx, dy) if dx is not None and dy is not None and dy > 0 and dy <= 5 else None)
             detections.append({
                 "label": "person",
                 "confidence": round(float(box.conf[0]), 3),
                 "bbox": [round(v, 2) for v in xywh],
                 "feet": [feet_x, feet_y],
-                "offset": [dx, dy]
+                # "offset": [dx, dy]
             })
-        return detections, blocked_offsets
+        return detections, blocked_offsets, feet_list
     
     def _postprocess_onnx(self, outputs, img_w, img_h, ratio, dw, dh, orig_w, orig_h):
         detections = []
         blocked_offsets = set()
+        feet_list = []
         conf_thres = CONFIG.get('CONF_THRES', 0.6)
         output = np.squeeze(outputs[0]).T
         for det in output:
@@ -133,6 +137,8 @@ class AUGVMixin:
             if cls_id != 0 or conf_score < conf_thres:
                 continue
             x, y, w, h = det[:4]
+
+            # Scale the bounding box to the original image size
             x_mapped = (x - dw) / ratio
             y_mapped = (y - dh) / ratio
             w_mapped = w / ratio
@@ -141,18 +147,20 @@ class AUGVMixin:
             y_mapped = np.clip(y_mapped, 0, orig_h)
             w_mapped = np.clip(w_mapped, 0, orig_w)
             h_mapped = np.clip(h_mapped, 0, orig_h)
+
             feet_x = x_mapped
             feet_y = y_mapped + h_mapped/2
-            dx, dy = _get_offset(feet_x, feet_y, orig_w, orig_h, h_mapped)
-            blocked_offsets.add((dx, dy) if dx is not None and dy is not None and dy > 0 and dy <= 5 else None)
+            feet_list.append((feet_x, feet_y) if feet_x is not None and feet_y is not None else None)
+            # dx, dy = _get_offset(feet_x, feet_y, orig_w, orig_h, h_mapped)
+            # blocked_offsets.add((dx, dy) if dx is not None and dy is not None and dy > 0 and dy <= 5 else None)
             detections.append({
                 "label": "person",
                 "confidence": round(float(conf_score), 3),
                 "bbox": [round(float(v), 2) for v in [x_mapped, y_mapped, w_mapped, h_mapped]],
                 "feet": [float(feet_x), float(feet_y)],
-                "offset": [int(dx), int(dy)]
+                # "offset": [int(dx), int(dy)]
             })
-        return detections, blocked_offsets
+        return detections, blocked_offsets, feet_list
 
     def _preprocess_onnx_image(self, frame):
         img, ratio, (dw, dh) = self._letterbox(frame, (640, 640))
@@ -202,10 +210,29 @@ class AUGVMixin:
         return img, ratio, (dw, dh)
     
     def _send_to_unity(self, agent_id, blocked):
+        """ Deprecated: Use _send_to_unity_feet instead """
         if self.last_detection == blocked:
             return
         _send_to_unity(agent_id, blocked)
         self.last_detection = blocked.copy()
+    
+    def _send_to_unity_feet(self, agent_id, feet_list):
+        # TODO: test if this is needed or not.
+        if self.last_detection == feet_list:
+            return
+        
+        try:
+            print(f"Sending to Unity for agent {agent_id}: {feet_list}")
+            AGENT_OUT_QUEUES[agent_id].put_nowait({
+                "action": "obstacle",
+                "data": {
+                    "agent_id": agent_id,
+                    "feet": feet_list
+                }
+            })
+            self.last_detection = feet_list.copy()
+        except Exception as e:
+            print(f"Error sending to Unity for agent {agent_id}: {e}")
 
 
 class AUGVYolo(threading.Thread, AUGVMixin):
@@ -229,11 +256,14 @@ class AUGVYolo(threading.Thread, AUGVMixin):
                 frame = self.q.get()
                 if frame is None:
                     continue
-                detections, blocked_offsets = self._process_frame(frame)
+                detections, blocked_offsets, feet_list = self._process_frame(frame)
                 
-                if blocked_offsets and self.last_detection != blocked_offsets:
-                    _send_to_unity(self.agent_id, blocked_offsets)
-                    self.last_detection = blocked_offsets.copy()
+                if blocked_offsets:
+                    """ Deprecated: Use _send_to_unity_feet instead """
+                    self._send_to_unity(self.agent_id, blocked_offsets)
+                
+                if feet_list:
+                    self._send_to_unity_feet(self.agent_id, feet_list)
                 
                 AGENT_STATE[self.agent_id] = {
                     "status": "blocked" if blocked_offsets else "safe",
@@ -268,10 +298,14 @@ class AUGVYoloMP(multiprocessing.Process, AUGVMixin):
                 if frame is None:
                     break
 
-                detections, blocked_offsets = self._process_frame(frame)
+                detections, blocked_offsets, feet_list = self._process_frame(frame)
 
                 if blocked_offsets:
+                    """ Deprecated: Use _send_to_unity_feet instead """
                     self._send_to_unity(self.agent_id, blocked_offsets)
+                
+                if feet_list:
+                    self._send_to_unity_feet(self.agent_id, feet_list)
                 
                 AGENT_STATE[self.agent_id] = {
                     "status": "blocked" if blocked_offsets else "safe",
@@ -298,10 +332,14 @@ class AUGVOnnx(threading.Thread, AUGVMixin):
                 if frame is None:
                     continue
 
-                detections, blocked_offsets = self._process_frame(frame)
+                detections, blocked_offsets, feet_list = self._process_frame(frame)
 
                 if blocked_offsets:
+                    """ Deprecated: Use _send_to_unity_feet instead """
                     self._send_to_unity(self.agent_id, blocked_offsets)
+                
+                if feet_list:
+                    self._send_to_unity_feet(self.agent_id, feet_list)
 
                 AGENT_STATE[self.agent_id] = {
                     "status": "blocked" if blocked_offsets else "safe",
@@ -330,10 +368,14 @@ class AUGVOnnxMP(multiprocessing.Process, AUGVMixin):
                 if frame is None:
                     break
                 
-                detections, blocked_offsets = self._process_frame(frame)
+                detections, blocked_offsets, feet_list = self._process_frame(frame)
                 
                 if blocked_offsets:
+                    """ Deprecated: Use _send_to_unity_feet instead """
                     self._send_to_unity(self.agent_id, blocked_offsets)
+                
+                if feet_list:
+                    self._send_to_unity_feet(self.agent_id, feet_list)
 
                 AGENT_STATE[self.agent_id] = {
                     "status": "blocked" if blocked_offsets else "safe",

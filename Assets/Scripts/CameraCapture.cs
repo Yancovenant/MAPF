@@ -17,7 +17,7 @@ public class CameraCapture : MonoBehaviour {
     private string wsUrl;
 
     public string agentId;
-    private Camera cam;
+    public Camera cam;
     private RenderTexture rt;
     private Texture2D tex;
 

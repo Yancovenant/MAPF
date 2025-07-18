@@ -41,6 +41,12 @@ public class PathSupervisor : MonoBehaviour {
     private Dictionary<Node, float> yoloObstacles = new();
     private HashSet<Node> occupiedNodes = new();
     
+    // For each agent, map Node to a queue of detection times
+    private Dictionary<string, Dictionary<Node, Queue<float>>> agentObstacleQueues = new();
+    private const int DETECTION_CONFIRM_FRAMES = 10; // Number of frames to confirm
+    private const float NODE_POSITION_THRESHOLD = 0.2f; // World distance to consider same node
+    private HashSet<string> agentStopList = new();
+
     IEnumerator Start() {
         if (Instance != null && Instance != this) {
             Destroy(gameObject);
@@ -91,13 +97,9 @@ public class PathSupervisor : MonoBehaviour {
     }
 
     public void AssignObstacleFromJSON(Dictionary<string, object> parsed) {
-        // TODO: change this into UnityCamera.ScreenToWorldPoint
-        // Expecting feet_x, feet_y. 
-        // I think feet_x, feet_y in my obstacle.py
-        // is using the center_x, center_y from yolo detection, but im not sure.
         if (!parsed.TryGetValue("agent_id", out var agentId) ||
-            !parsed.TryGetValue("blocked", out var blockedOffsets) ||
-            !(blockedOffsets is List<object> pixelList)) return;
+            !parsed.TryGetValue("feet", out var feetList) ||
+            !(feetList is List<object> pixelList)) return;
         
         var agent = agents.FirstOrDefault(a => a.name == agentId.ToString());
         if (agent == null) return;
@@ -106,19 +108,61 @@ public class PathSupervisor : MonoBehaviour {
         if (cam == null) return;
 
         float now = Time.time;
+        int camHeight = GlobalConfig.Instance.resolutionHeight;
+
+        // ? storing the obstacle detection for each agent.
+        // ? important for avoiding late and race condition.
+        if (!agentObstacleQueues.ContainsKey(agent.name))
+            agentObstacleQueues[agent.name] = new Dictionary<Node, Queue<float>>();
+        var nodeQueues = agentObstacleQueues[agent.name];
+        var detectedNodes = new List<Node>();
+
+        // Stop the agent if not already waiting
+        agentStopList.Add(agent.name);
+
         foreach (var item in pixelList) {
             if (!(item is List<object> coords) || coords.Count < 2) continue;
-            // [feet_x, feet_y]
+            // (feet_x, feet_y)
             if (!float.TryParse(coords[0].ToString(), out float feet_x)) continue;
             if (!float.TryParse(coords[1].ToString(), out float feet_y)) continue;
+            // Debug.Log($"PathSupervisor: Feet {feet_x}, {feet_y}");
 
-            Ray ray = cam.ScreenPointToRay(new Vector3(feet_x, feet_y, 0));
-            if (Physics.Raycast(ray, out RaycastHit hit, 100f, LayerMask.GetMask("Ground"))) {
+            // Flip y, [yolo] (0,0) is top left.
+            // Flip y, [unity] (0,0) is bottom left.
+            feet_y = camHeight - feet_y;
+
+            Ray ray = cam.cam.ScreenPointToRay(new Vector3(feet_x, feet_y, 0));
+            if (Physics.Raycast(ray, out RaycastHit hit, 100f, LayerMask.GetMask("Road"))) {
+                // Debug.Log($"PathSupervisor: Ray Casted hit.point vector3: {hit.point}");
+
+                Debug.DrawRay(ray.origin, ray.direction * hit.distance, Color.blue, 2f);
+                GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                marker.transform.position = hit.point + Vector3.up * 0.1f; // Slightly above ground
+                marker.transform.localScale = Vector3.one * 0.2f;
+                GameObject.Destroy(marker, 2f);
+
                 Node node = grid.NodeFromWorldPoint(hit.point);
-                Debug.Log($"PathSupervisor Yolo Ray Casted: Node {node.worldPosition}");
-                if (node != null) {
-                    yoloObstacles[node] = now;
-                }
+                if (node == null) continue;
+                // Try to find an existing node within threshold
+                Node existing = nodeQueues.Keys.FirstOrDefault(n => Vector3.Distance(n.worldPosition, node.worldPosition) < NODE_POSITION_THRESHOLD);
+                if (existing == null) existing = node;
+                if (!nodeQueues.ContainsKey(existing)) nodeQueues[existing] = new Queue<float>();
+                nodeQueues[existing].Enqueue(now);
+                if (nodeQueues[existing].Count > DETECTION_CONFIRM_FRAMES)
+                    nodeQueues[existing].Dequeue();
+                detectedNodes.Add(existing);
+            }
+        }
+        
+        // agent.StartCoroutine(agent.WaitAndRequestNextPath());
+        // Remove old nodes not detected in this frame
+        var toRemove = nodeQueues.Keys.Except(detectedNodes).ToList();
+        foreach (var n in toRemove) nodeQueues.Remove(n);
+        // Confirm obstacles
+        foreach (var kvp in nodeQueues) {
+            if (kvp.Value.Count == DETECTION_CONFIRM_FRAMES && (kvp.Value.Last() - kvp.Value.First()) < 2.0f) { // Detected in N recent frames
+                yoloObstacles[kvp.Key] = now;
+                // agentStopList.Remove(agent.name);
             }
         }
 
@@ -191,7 +235,12 @@ public class PathSupervisor : MonoBehaviour {
                         activePaths[ag.name] = newPath;
                         ag.PathChanged();
                     }
-                } else if (path.Skip(1).Any(n => occupiedNodes.Contains(n) && path.Count > 2)) {
+                } else if (
+                    // ? if path next any is occupied && the remaining path count is more than 2.
+                    (path.Skip(1).Any(n => occupiedNodes.Contains(n) && path.Count > 2)) ||
+                    // ? if the agent is in the stop list.
+                    agentStopList.Contains(ag.name)) {
+                        if (agentStopList.Contains(ag.name)) Debug.Log($"PathSupervisor: Agent {ag.name} is in the stop list");
                     // ? this is to make sure that any occupied node that is,
                     // ? also the last node of the agent, will be waiting for step.
                     // ? above is the case where it doesnt include the agent own end node.

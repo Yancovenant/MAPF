@@ -17,6 +17,8 @@ public class GridManager : MonoBehaviour {
 
     public bool isReady = false;
 
+    public bool drawGizmos = false;
+
     void Awake() {
         if (unwalkableLayer == 0) {
             unwalkableLayer = LayerMask.GetMask("Unwalkable");
@@ -24,7 +26,14 @@ public class GridManager : MonoBehaviour {
     }
 
     public void CreateGrid() {
-        nodeDiameter = nodeRadius * 2;
+        /**
+        <summary>
+        Create the grid.
+        </summary>
+        <param name="nodeRadius">the center of the node e.g square</param>
+        <param name="nodeDiameter">the full size of the node e.g square</param>
+        */
+        nodeDiameter = nodeRadius * 2; // => 0.5 * 2 = 1
         gridSizeX = Mathf.RoundToInt(gridSize.x / nodeDiameter);
         gridSizeY = Mathf.RoundToInt(gridSize.y / nodeDiameter);
 
@@ -44,8 +53,10 @@ public class GridManager : MonoBehaviour {
     }
 
     public Node NodeFromWorldPoint(Vector3 worldPosition) {
-        var x = Mathf.FloorToInt(worldPosition.x);
-        var y = Mathf.FloorToInt(worldPosition.z);
+        // 14.0 - 0.5 = 13.5 -> 13
+        // 9.9 - 0.5 = 9.4 -> 9
+        var x = Mathf.FloorToInt((worldPosition.x - transform.position.x) / nodeDiameter);
+        var y = Mathf.FloorToInt((worldPosition.z - transform.position.z) / nodeDiameter);
 
         x = Mathf.Clamp(x, 0, gridSizeX - 1);
         y = Mathf.Clamp(y, 0, gridSizeY - 1);
@@ -69,5 +80,13 @@ public class GridManager : MonoBehaviour {
                 }
         }
         return neighbours;
+    }
+
+    void OnDrawGizmos() {
+        if (grid == null || !drawGizmos) return;
+        foreach (var node in grid) {
+            Gizmos.color = node.walkable ? Color.white : Color.red;
+            Gizmos.DrawCube(node.worldPosition, Vector3.one * (nodeDiameter - .1f));
+        }
     }
 }

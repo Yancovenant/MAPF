@@ -105,6 +105,16 @@ class AUGVMonitor {
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     ctx.closePath();
+
+
+                    // Debugging Feet
+                    const feetX = cx * (canvas.width / img.width);
+                    const feetY = (cy + h/2) * (canvas.height / img.height);
+                    ctx.beginPath();
+                    ctx.arc(feetX, feetY, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'blue';
+                    ctx.fill();
+                    ctx.closePath();
                 })
             };
             

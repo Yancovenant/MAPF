@@ -82,6 +82,10 @@ async def augv_ws(ws: WebSocket):
     finally:
         print(f"Agent {agent_id} websocket closed")
         AGENT_FRAMES.pop(agent_id, None)
+        AGENT_OUT_QUEUES.pop(agent_id, None)
+        AGENT_QUEUES.pop(agent_id, None)
+        GLOBAL_AGENT[agent_id].last_detection = None
+
         if CONFIG['INFERENCE_METHOD'] == 'multiprocessing':
             proc =AGENT_PROCS.pop(agent_id, None)
             q = AGENT_QUEUES.get(agent_id)
