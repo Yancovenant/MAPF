@@ -41,9 +41,9 @@ public class PathSupervisor : MonoBehaviour {
     private Dictionary<Node, float> yoloObstacles = new();
     private HashSet<Node> occupiedNodes = new();
     
-    // For each agent, map Node to a queue of detection times
-    private Dictionary<string, Dictionary<Node, Queue<float>>> agentObstacleQueues = new();
-    private const int DETECTION_CONFIRM_FRAMES = 10; // Number of frames to confirm
+    // For each agent, map Node to a count of unique detections
+    private Dictionary<string, Dictionary<Node, int>> agentObstacleCounts = new();
+    private const int DETECTION_CONFIRM_FRAMES = 5; // Number of frames to confirm
     private const float NODE_POSITION_THRESHOLD = 0.2f; // World distance to consider same node
     private HashSet<string> agentStopList = new();
 
@@ -109,17 +109,16 @@ public class PathSupervisor : MonoBehaviour {
 
         float now = Time.time;
         int camHeight = GlobalConfig.Instance.resolutionHeight;
-
-        // ? storing the obstacle detection for each agent.
-        // ? important for avoiding late and race condition.
-        if (!agentObstacleQueues.ContainsKey(agent.name))
-            agentObstacleQueues[agent.name] = new Dictionary<Node, Queue<float>>();
-        var nodeQueues = agentObstacleQueues[agent.name];
-        var detectedNodes = new List<Node>();
-
+        
+        if (!agentObstacleCounts.ContainsKey(agent.name))
+            agentObstacleCounts[agent.name] = new Dictionary<Node, int>();
+        var nodeCounts = agentObstacleCounts[agent.name];
         // Stop the agent if not already waiting
-        agentStopList.Add(agent.name);
+        // agentStopList.Add(agent.name);
 
+        var detectedPositions = new List<Vector3>();
+        
+        // Collect all detected node positions for this frame
         foreach (var item in pixelList) {
             if (!(item is List<object> coords) || coords.Count < 2) continue;
             // (feet_x, feet_y)
@@ -142,27 +141,35 @@ public class PathSupervisor : MonoBehaviour {
                 GameObject.Destroy(marker, 2f);
 
                 Node node = grid.NodeFromWorldPoint(hit.point);
-                if (node == null) continue;
-                // Try to find an existing node within threshold
-                Node existing = nodeQueues.Keys.FirstOrDefault(n => Vector3.Distance(n.worldPosition, node.worldPosition) < NODE_POSITION_THRESHOLD);
-                if (existing == null) existing = node;
-                if (!nodeQueues.ContainsKey(existing)) nodeQueues[existing] = new Queue<float>();
-                nodeQueues[existing].Enqueue(now);
-                if (nodeQueues[existing].Count > DETECTION_CONFIRM_FRAMES)
-                    nodeQueues[existing].Dequeue();
-                detectedNodes.Add(existing);
+                Node agentNode = grid.NodeFromWorldPoint(agent.transform.position);
+                if (node == null ||
+                    node.walkable == false ||
+                    yoloObstacles.ContainsKey(node) ||
+                    node == agentNode
+                    ) continue;
+                detectedPositions.Add(node.worldPosition);
             }
         }
         
-        // agent.StartCoroutine(agent.WaitAndRequestNextPath());
-        // Remove old nodes not detected in this frame
-        var toRemove = nodeQueues.Keys.Except(detectedNodes).ToList();
-        foreach (var n in toRemove) nodeQueues.Remove(n);
-        // Confirm obstacles
-        foreach (var kvp in nodeQueues) {
-            if (kvp.Value.Count == DETECTION_CONFIRM_FRAMES && (kvp.Value.Last() - kvp.Value.First()) < 2.0f) { // Detected in N recent frames
-                yoloObstacles[kvp.Key] = now;
-                // agentStopList.Remove(agent.name);
+        // Group detected positions by threshold and only add one detection per group
+        var uniqueNodes = new List<Node>();
+        foreach (var pos in detectedPositions) {
+            if (!uniqueNodes.Any(n => Vector3.Distance(n.worldPosition, pos) < NODE_POSITION_THRESHOLD)) {
+                Node node = grid.NodeFromWorldPoint(pos);
+                uniqueNodes.Add(node);
+            }
+        }
+        // For each unique node, increment the count
+        foreach (var node in uniqueNodes) {
+            Node existing = nodeCounts.Keys.FirstOrDefault(n => Vector3.Distance(n.worldPosition, node.worldPosition) < NODE_POSITION_THRESHOLD);
+            if (existing == null) existing = node;
+            if (!nodeCounts.ContainsKey(existing)) nodeCounts[existing] = 0;
+            nodeCounts[existing] += 1;
+            if (nodeCounts[existing] >= DETECTION_CONFIRM_FRAMES) {
+                yoloObstacles[existing] = now;
+                agentStopList.Remove(agent.name);
+            } else {
+                agentStopList.Add(agent.name);
             }
         }
 
@@ -235,12 +242,7 @@ public class PathSupervisor : MonoBehaviour {
                         activePaths[ag.name] = newPath;
                         ag.PathChanged();
                     }
-                } else if (
-                    // ? if path next any is occupied && the remaining path count is more than 2.
-                    (path.Skip(1).Any(n => occupiedNodes.Contains(n) && path.Count > 2)) ||
-                    // ? if the agent is in the stop list.
-                    agentStopList.Contains(ag.name)) {
-                        if (agentStopList.Contains(ag.name)) Debug.Log($"PathSupervisor: Agent {ag.name} is in the stop list");
+                } else if (path.Skip(1).Any(n => occupiedNodes.Contains(n) && path.Count > 2)) {
                     // ? this is to make sure that any occupied node that is,
                     // ? also the last node of the agent, will be waiting for step.
                     // ? above is the case where it doesnt include the agent own end node.
@@ -248,7 +250,13 @@ public class PathSupervisor : MonoBehaviour {
                     activeAgents.Add(ag.name);
                     continue;
                 }
-                ag.Advance();
+                if (agentStopList.Contains(ag.name)) {
+                    ag.State = AUGV.AgentState.WaitingForStep;
+                    activeAgents.Add(ag.name);
+                    continue;
+                } else {
+                    ag.Advance();
+                }
             }
         }
         _trimPaths();
