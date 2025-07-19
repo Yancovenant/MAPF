@@ -45,7 +45,7 @@ public class PathSupervisor : MonoBehaviour {
     private Dictionary<string, Dictionary<Node, int>> agentObstacleCounts = new();
     private const int DETECTION_CONFIRM_FRAMES = 5; // Number of frames to confirm
     private const float NODE_POSITION_THRESHOLD = 0.2f; // World distance to consider same node
-    private HashSet<string> agentStopList = new();
+    private Dictionary<string, float> agentStopList = new();
 
     IEnumerator Start() {
         if (Instance != null && Instance != this) {
@@ -142,11 +142,11 @@ public class PathSupervisor : MonoBehaviour {
 
                 Node node = grid.NodeFromWorldPoint(hit.point);
                 Node agentNode = grid.NodeFromWorldPoint(agent.transform.position);
-                if (node == null ||
-                    node.walkable == false ||
-                    yoloObstacles.ContainsKey(node) ||
-                    node == agentNode
-                    ) continue;
+                if (node == null || 
+                    node.walkable == false || 
+                    node == agentNode ||
+                    yoloObstacles.ContainsKey(node)) continue;
+                // Debug.Log($"PathSupervisor: Node {node.worldPosition}");
                 detectedPositions.Add(node.worldPosition);
             }
         }
@@ -156,20 +156,25 @@ public class PathSupervisor : MonoBehaviour {
         foreach (var pos in detectedPositions) {
             if (!uniqueNodes.Any(n => Vector3.Distance(n.worldPosition, pos) < NODE_POSITION_THRESHOLD)) {
                 Node node = grid.NodeFromWorldPoint(pos);
+                // Debug.Log($"PathSupervisor: Node {node.worldPosition}");
                 uniqueNodes.Add(node);
             }
         }
         // For each unique node, increment the count
         foreach (var node in uniqueNodes) {
             Node existing = nodeCounts.Keys.FirstOrDefault(n => Vector3.Distance(n.worldPosition, node.worldPosition) < NODE_POSITION_THRESHOLD);
-            if (existing == null) existing = node;
+            if (existing == null || existing != node) existing = node;
             if (!nodeCounts.ContainsKey(existing)) nodeCounts[existing] = 0;
             nodeCounts[existing] += 1;
-            if (nodeCounts[existing] >= DETECTION_CONFIRM_FRAMES) {
-                yoloObstacles[existing] = now;
-                agentStopList.Remove(agent.name);
+            if (nodeCounts[existing] > DETECTION_CONFIRM_FRAMES) {
+                if (!yoloObstacles.ContainsKey(existing)) {
+                    yoloObstacles[existing] = now;
+                    node.walkable = false;
+                }
+                if (agentStopList.ContainsKey(agent.name)) agentStopList.Remove(agent.name);
             } else {
-                agentStopList.Add(agent.name);
+                if (!agentStopList.ContainsKey(agent.name)) agentStopList[agent.name] = now;
+                agentStopList[agent.name] = now;
             }
         }
 
@@ -250,13 +255,17 @@ public class PathSupervisor : MonoBehaviour {
                     activeAgents.Add(ag.name);
                     continue;
                 }
-                if (agentStopList.Contains(ag.name)) {
+                if (agentStopList.ContainsKey(ag.name) && Time.time - agentStopList[ag.name] > .5f) {
+                    agentStopList.Remove(ag.name);
+                }
+                if (agentStopList.ContainsKey(ag.name)) {
                     ag.State = AUGV.AgentState.WaitingForStep;
                     activeAgents.Add(ag.name);
                     continue;
                 } else {
                     ag.Advance();
                 }
+                
             }
         }
         _trimPaths();
@@ -334,7 +343,7 @@ public class PathSupervisor : MonoBehaviour {
         
         var contestedNodes = _getConflictNodes(activePaths);
         if (contestedNodes.Count == 0) return;
-
+        
         var nextActivePaths = new Dictionary<string, List<Node>>(activePaths);
         
         // var allConflictAgents = contestedNodes.SelectMany(c => c.Value).Distinct().ToList();
@@ -356,6 +365,8 @@ public class PathSupervisor : MonoBehaviour {
             var agentList = conflict.Value.ToArray();
             int n = agentList.Length; // agent how many
             int k = Mathf.Max(step + 3, 5); // maximum step used for wait permutations.
+
+            Debug.DrawRay(node.worldPosition, Vector3.up * 100f, Color.red, 2f);
 
             // ? mask is the subset of agents that will wait.
             // ? where mask < (1 left shift n) - 1;
@@ -459,7 +470,7 @@ public class PathSupervisor : MonoBehaviour {
         }
         if (oneAllowed.Count == allConflictAgents.Count) scenarios.Add(oneAllowed);
 
-        Debug.Log($"test__scenarios: {scenarios.Count} for total conflict {contestedNodes.Count}");
+        Debug.Log($"test__scenarios: {scenarios.Count} for total conflict {contestedNodes.Count} at depth {depth}");
         Dictionary<string, List<Node>> best2 = null;
         bool foundConflictFree = false;
         int bestTotalCost = int.MaxValue;
@@ -471,6 +482,7 @@ public class PathSupervisor : MonoBehaviour {
                     bestTotalCost = totalCost;
                     foundConflictFree = true;
                     best2 = s;
+                    Debug.Log($"resolved at {depth} path => {string.Join(", ", s.Keys.ToArray())}, {string.Join(", ", s.Values.SelectMany(p => p.Select(n => n.worldPosition.ToString())).ToArray())}");
                 }
             } else if (!foundConflictFree && totalCost < bestTotalCost) {
                 bestTotalCost = totalCost;

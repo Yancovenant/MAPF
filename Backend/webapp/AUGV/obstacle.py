@@ -229,7 +229,6 @@ class AUGVMixin:
             return
         
         try:
-            print(f"Sending to Unity for agent {agent_id}: {feet_list}")
             AGENT_OUT_QUEUES[agent_id].put_nowait({
                 "action": "obstacle",
                 "data": {
