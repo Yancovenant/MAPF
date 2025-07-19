@@ -101,7 +101,7 @@ public class MapGenerator : MonoBehaviour {
                         break;
 
                     case 'P':
-                        var person = Instantiate(personPrefab, position + Vector3.up * .5f, Quaternion.identity, transform);
+                        var person = Instantiate(personPrefab, position, Quaternion.identity, transform);
                         break;
                 }
             }
