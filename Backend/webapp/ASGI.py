@@ -32,7 +32,7 @@ def log_resource_usage():
 
 threading.Thread(target=log_resource_usage, daemon=True).start()
 
-@endroute("/monitor", methods=["GET"])
+@endroute("/monitor", type="http", methods=["GET"])
 async def monitor_frontend(req: Request):
     EXPECTED_AGENTS = [f"AUGV_{i}" for i in range(1, 6)]
     agents = list(set(AGENT_FRAMES.keys()) | set(EXPECTED_AGENTS))
@@ -51,19 +51,19 @@ async def monitor_frontend(req: Request):
     content = base_template.replace("<t t-agents/>", agents_monitor)
     return render_layout("Yolo Monitor", content)
 
-@endroute("/", methods=["GET"])
+@endroute("/", type="http", methods=["GET"])
 async def home(req: Request):
     with open("webapp/static/xml/page_home.xml", "r", encoding="utf-8") as f:
         content = f.read()
     return render_layout("Yolo Home", content)
 
-@endroute("/map", methods=["GET"])
+@endroute("/map", type="http", methods=["GET"])
 async def map(req: Request):
     with open("webapp/static/xml/page_map.xml", "r", encoding="utf-8") as f:
         content = f.read()
     return render_layout("Yolo Map", content)
 
-@endroute("/client", methods=["GET"])
+@endroute("/client", type="http", methods=["GET"])
 async def client_frontend(req: Request):
     with open("webapp/static/xml/page_client.xml", "r", encoding="utf-8") as f:
         content = f.read()

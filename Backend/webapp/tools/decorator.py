@@ -7,12 +7,12 @@ from starlette.responses import HTMLResponse
 
 ROUTES = []
 
-def endroute(path, methods=["GET"], con_type="http"):
+def endroute(path, **routing):
     def decorator(func):
-        if con_type == "ws" or "ws" in con_type:
+        if routing.get("type") == "ws":
             route_obj = WebSocketRoute(path, func)
         else:
-            route_obj = Route(path, func, methods=methods)
+            route_obj = Route(path, func, methods=routing.get("methods", ["GET"]))
         
         ROUTES.append(route_obj)
         return func

@@ -20,7 +20,7 @@ from starlette.requests import Request
 MONITOR_CLIENTS = set()
 AGENT_FRAMES = {}
 
-@endroute("/ws/augv/{agent_id}", con_type="ws")
+@endroute("/ws/augv/{agent_id}", type="ws")
 async def augv_ws(ws: WebSocket):
     agent_id = ws.path_params["agent_id"]
     await ws.accept()
@@ -94,7 +94,7 @@ async def augv_ws(ws: WebSocket):
         await _cleanup(agent_id)
         send_msg.cancel()
 
-@endroute("/ws/monitor", con_type="ws") 
+@endroute("/ws/monitor", type="ws") 
 async def monitor_ws(ws: WebSocket):
     await ws.accept()
     MONITOR_CLIENTS.add(ws)
@@ -124,7 +124,7 @@ async def monitor_ws(ws: WebSocket):
         MONITOR_CLIENTS.discard(ws)
 
 # Controller json
-@endroute("/send-routes", methods=["POST"])
+@endroute("/send-routes", type="http", methods=["POST"])
 async def send_routes(req: Request):
     body = await req.json()
     try:
