@@ -14,6 +14,7 @@ Assets/Scripts/*.asmdef
 Backend/**/__pycache__/
 Backend/*.py[cod]
 Backend/*$py.class
+**/__pycache__/
 
 # C extensions
 Backend/*.so

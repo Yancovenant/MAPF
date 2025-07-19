@@ -117,6 +117,9 @@ class AUGVMixin:
             detections, blocked_offsets, feet_list = self._postprocess_pt(res, img_h, img_w)
         
         blocked_offsets = set([b for b in blocked_offsets if b is not None])
+        
+        # [fixed] numpy conversion on different device machine
+        feet_list = self._convert_numpy_to_float(feet_list)
 
         return detections, blocked_offsets, feet_list
 
@@ -175,7 +178,7 @@ class AUGVMixin:
                 "label": "person",
                 "confidence": round(float(conf_score), 3),
                 "bbox": [round(float(v), 2) for v in [x_mapped, y_mapped, w_mapped, h_mapped]],
-                "feet": [float(feet_x), float(feet_y)],
+                "feet": [feet_x, feet_y],
                 # "offset": [int(dx), int(dy)]
             })
         return detections, blocked_offsets, feet_list
@@ -251,6 +254,19 @@ class AUGVMixin:
         except Exception as e:
             print(f"Error sending to Unity for agent {agent_id}: {e}")
 
+    def _convert_numpy_to_float(self, feet_list):
+        """
+        Fixed numpy conversion could be different on,
+        different device machine.
+
+        as for different installation of numpy,
+        or different os version.
+
+        sometimes the feet_list would still have np.float()
+        rather than float().
+        thus making it impossible to send JSON data to unity.
+        """
+        return [(float(feet_x), float(feet_y)) for (feet_x, feet_y) in feet_list if feet_x is not None and feet_y is not None]
 
 class AUGVYolo(threading.Thread, AUGVMixin):
     def __init__(self, agent_id):
