@@ -31,8 +31,18 @@ async def augv_ws(ws: WebSocket):
 
     async def _dispatch():
         while True:
-            msg = await AGENT_OUT_QUEUES[agent_id].get()
-            await ws.send_json(msg)
+            try:
+                msg = await AGENT_OUT_QUEUES[agent_id].get()
+                await ws.send_json(msg)
+            except asyncio.CancelledError:
+                print(f"[Controller] Agent {agent_id} asyncio cancelled")
+                break
+            except WebSocketDisconnect:
+                print(f"[Controller] Agent {agent_id} disconnected")
+                break
+            except Exception as e:
+                print(f"[Controller] Error sending message to agent {agent_id}: {e}")
+                break 
 
     send_msg = asyncio.create_task(_dispatch())
 
@@ -76,25 +86,12 @@ async def augv_ws(ws: WebSocket):
                         MONITOR_CLIENTS.discard(client)
 
     except WebSocketDisconnect:
-        print(f"Agent {agent_id} disconnected")
+        print(f"[Controller] Agent {agent_id} disconnected")
     except Exception as e:
-        print(f"Error in agent {agent_id} websocket: {e}")
+        print(f"[Controller] Error in agent {agent_id} websocket: {e}")
     finally:
-        print(f"Agent {agent_id} websocket closed")
-        AGENT_FRAMES.pop(agent_id, None)
-        AGENT_OUT_QUEUES.pop(agent_id, None)
-        AGENT_QUEUES.pop(agent_id, None)
-        GLOBAL_AGENT[agent_id].last_detection = None
-
-        if CONFIG['INFERENCE_METHOD'] == 'multiprocessing':
-            proc =AGENT_PROCS.pop(agent_id, None)
-            q = AGENT_QUEUES.get(agent_id)
-            if proc and q:
-                try:
-                    q.put(None)
-                    proc.join(timeout=5)
-                except Exception as e:
-                    print(f"Error shutting down process {agent_id}: {e}")
+        print(f"[Controller] Agent {agent_id} websocket closed")
+        await _cleanup(agent_id)
         send_msg.cancel()
 
 @endroute("/ws/monitor", con_type="ws") 
@@ -138,3 +135,39 @@ async def send_routes(req: Request):
         return JSONResponse({"status": "ok"})
     except Exception as e:
         return JSONResponse({"status": "error", "error": str(e)}, status_code=500)
+
+async def _cleanup(agent_id):
+    """ Cleanup for agent disconnection """
+    try:
+        AGENT_FRAMES.pop(agent_id, None)
+        AGENT_OUT_QUEUES.pop(agent_id, None)
+        AGENT_QUEUES.pop(agent_id, None)
+        AGENT_STATE.pop(agent_id, None)
+        GLOBAL_AGENT.pop(agent_id, None)
+
+        if CONFIG['INFERENCE_METHOD'] == 'multiprocessing':
+            proc = AGENT_PROCS.pop(agent_id, None)
+            if proc and proc.is_alive():
+                try:
+                    proc.terminate()
+                    proc.join(timeout=5)
+                    if proc.is_alive():
+                        proc.kill()
+                except Exception as e:
+                    print(f"[Controller] Error shutting down process {agent_id}: {e}")
+
+        dead_clients = []
+        for client in MONITOR_CLIENTS:
+            try:
+                if client.state.value == 3:
+                    dead_clients.append(client)
+            except:
+                dead_clients.append(client)
+        
+        for client in dead_clients:
+            MONITOR_CLIENTS.discard(client)
+        
+        print(f"[Controller] {len(dead_clients)} monitor clients disconnected")
+        
+    except Exception as e:
+        print(f"[Controller] Error cleaning up agent {agent_id}: {e}")

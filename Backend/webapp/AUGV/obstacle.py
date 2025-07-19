@@ -80,7 +80,18 @@ class AUGVMixin:
             self.onnx = True
         else:
             self.onnx = False
+        
+        self._running = True
     
+    def stop(self):
+        """ Graceful stop method """
+        self._running = False
+        if hasattr(self, 'q') and self.q:
+            try:
+                self.q.put(None, timeout=1)
+            except:
+                pass
+
     def _process_frame(self, frame):
         detections = []
         blocked_offsets = set()
@@ -257,7 +268,7 @@ class AUGVYolo(threading.Thread, AUGVMixin):
             AGENT_STATE[self.agent_id]['status'] = 'error'
             return
         
-        while True:
+        while self._running:
             try:
                 frame = self.q.get()
                 if frame is None:
@@ -265,7 +276,7 @@ class AUGVYolo(threading.Thread, AUGVMixin):
                 detections, blocked_offsets, feet_list = self._process_frame(frame)
                 
                 if blocked_offsets:
-                    """ Deprecated: Use _send_to_unity_feet instead """
+                    """ Deprecated: use _send_to_unity_feet instead """
                     self._send_to_unity(self.agent_id, blocked_offsets)
                 
                 if feet_list:
@@ -276,10 +287,13 @@ class AUGVYolo(threading.Thread, AUGVMixin):
                     "detections": detections,
                     "blocked_offsets": [offset for offset in blocked_offsets if offset is not None]
                 }
+            except queue.Empty:
+                continue
             except Exception as e:
                 print(f"Error in AgentYoloThread for agent {self.agent_id}: {e}")
                 AGENT_STATE[self.agent_id]['status'] = 'error'
                 break
+        
 
 class AUGVYoloMP(multiprocessing.Process, AUGVMixin):
     def __init__(self, agent_id):
@@ -298,7 +312,7 @@ class AUGVYoloMP(multiprocessing.Process, AUGVMixin):
             AGENT_STATE[self.agent_id]['status'] = 'error'
             return
         
-        while True:
+        while self._running:
             try:
                 frame = self.q.get()
                 if frame is None:
@@ -318,10 +332,13 @@ class AUGVYoloMP(multiprocessing.Process, AUGVMixin):
                     "detections": detections,
                     "blocked_offsets": [offset for offset in blocked_offsets if offset is not None]
                 }
+            except queue.Empty:
+                continue
             except Exception as e:
                 print(f"Error in AgentYoloMP for agent {self.agent_id}: {e}")
                 AGENT_STATE[self.agent_id]['status'] = 'error'
                 break
+        
 
 #### ONNX
 class AUGVOnnx(threading.Thread, AUGVMixin):
@@ -332,7 +349,7 @@ class AUGVOnnx(threading.Thread, AUGVMixin):
         self.input_name = self.ort_sess.get_inputs()[0].name
 
     def run(self):
-        while True:
+        while self._running:
             try:
                 frame = self.q.get()
                 if frame is None:
@@ -352,10 +369,13 @@ class AUGVOnnx(threading.Thread, AUGVMixin):
                     "detections": detections,
                     "blocked_offsets": list(blocked_offsets)
                 }
+            except queue.Empty:
+                continue
             except Exception as e:
                 print(f"Error in AgentOnnx for agent {self.agent_id}: {e}")
                 AGENT_STATE[self.agent_id]['status'] = 'error'
                 break
+        
 
 class AUGVOnnxMP(multiprocessing.Process, AUGVMixin):
     def __init__(self, agent_id):
@@ -368,7 +388,7 @@ class AUGVOnnxMP(multiprocessing.Process, AUGVMixin):
         self.ort_sess = get_onnx_session(CONFIG['MODEL_NAME'], CONFIG.get('BACKEND_DEVICE', 'cpu'))
         self.input_name = self.ort_sess.get_inputs()[0].name
 
-        while True:        
+        while self._running:        
             try:
                 frame = self.q.get()
                 if frame is None:
@@ -388,6 +408,8 @@ class AUGVOnnxMP(multiprocessing.Process, AUGVMixin):
                     "detections": detections,
                     "blocked_offsets": list(blocked_offsets)
                 }
+            except queue.Empty:
+                continue
             except Exception as e:
                 print(f"Error in AgentOnnxMP for agent {self.agent_id}: {e}")
                 AGENT_STATE[self.agent_id]['status'] = 'error'

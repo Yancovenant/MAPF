@@ -77,16 +77,75 @@ async def on_shutdown():
     """ This function is called when the server is shutting down, to make sure all processes and queues are closed. """
     print("Shutting down all processes and queues...")
     for agent_id, proc in list(AGENT_PROCS.items()):
-        q = AGENT_QUEUES.get(agent_id)
-        if proc and q:
+        if proc.is_alive():
             try:
-                q.put(None)
+                proc.stop() if hasattr(proc, 'stop') else proc.terminate()
                 proc.join(timeout=5)
+                if proc.is_alive():
+                    proc.kill()
             except Exception as e:
                 print(f"Error shutting down agent {agent_id}: {e}")
+
+        for agent_id in list(GLOBAL_AGENT.keys()):
+            _cleanup_model(agent_id)
+        
+        _cleanup_all_queues()
+
+        AGENT_FRAMES.clear()
+        AGENT_OUT_QUEUES.clear()
+        AGENT_QUEUES.clear()
+        AGENT_STATE.clear()
+        GLOBAL_AGENT.clear()
+        AGENT_PROCS.clear()
+
+        print("All processes and queues cleaned up completely")
 
 app = Starlette(routes=ROUTES, debug=True)
 app.add_exception_handler(404, not_found)
 app.mount("/static", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 application = app
+
+def _cleanup_model(agent_id):
+    """ Cleanup model resources for an agent """
+    try:
+        if agent_id in GLOBAL_AGENT:
+            agent = GLOBAL_AGENT[agent_id]
+            if hasattr(agent, 'stop'):
+                agent.stop()
+            if hasattr(agent, 'model'):
+                del agent.model
+            if hasattr(agent, 'ort_sess'):
+                agent.ort_sess = None
+            
+            GLOBAL_AGENT.pop(agent_id, None)
+        
+        print(f"[ASGI] Model resources cleaned up for agent {agent_id}")
+    except Exception as e:
+        print(f"[ASGI] Error cleaning up model resources for agent {agent_id}: {e}")
+    
+def _cleanup_all_queues():
+    for agent_id in list(AGENT_QUEUES.keys()):
+        try:
+            q = AGENT_QUEUES.get(agent_id)
+            while not q.empty():
+                try:
+                    q.get_nowait()
+                except queue.Empty:
+                    break
+            AGENT_QUEUES.pop(agent_id, None)
+            
+            if agent_id in AGENT_OUT_QUEUES:
+                q = AGENT_OUT_QUEUES.get(agent_id)
+                while not q.empty():
+                    try:
+                        q.get_nowait()
+                    except queue.Empty:
+                        break
+                AGENT_OUT_QUEUES.pop(agent_id, None)
+
+            print(f"[ASGI] Queues cleaned up for agent {agent_id}")
+        
+        except Exception as e:
+            print(f"[ASGI] Error cleaning up queues for agent {agent_id}: {e}")
+    
