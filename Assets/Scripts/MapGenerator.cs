@@ -7,7 +7,7 @@ using UnityEngine;
 using System.Collections.Generic;
 
 public class MapGenerator : MonoBehaviour {
-    public GameObject roadPrefab, buildingPrefab, warehousePrefab, spawnMarkerPrefab, garageDoorPrefab, loadingSpotPrefab;
+    public GameObject personPrefab, roadPrefab, buildingPrefab, warehousePrefab, spawnMarkerPrefab, garageDoorPrefab, loadingSpotPrefab;
 
     string[] mapLayout = new string[] {
         "..BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
@@ -32,7 +32,7 @@ public class MapGenerator : MonoBehaviour {
         "R.BBBBBBRBBBBBB.R.BBBBBBBBBB.R.BBBBB.R.B.R.B",
         "R.BBBBBBRBBBBBB.R.BBBBBBBBBB.R.BBBBB.R.B.R.B",
         "R.......R.BBBBB.R.BBBBBBBBBB.R.B.....R.B.R.B",
-        "RRRRRRRRR.BBBBB.R.BBBBBBBBBB.R.B.....R...R.B",
+        "RRRRRRRRR.BBBBB.R.BBBBBBBBBB.RPB.....R...R.B",
         "....R.B.R.BBBBB.R............R.B.WRRRRRWRR.B",
         ".WRRR.B.R.BBBBB.RRRRRRRRR....R.B.R...R.....B",
         "....R.B.R.BBBBB.R.......RRRWRR.B.RRRRR......",
@@ -98,6 +98,10 @@ public class MapGenerator : MonoBehaviour {
                         blocker.layer = LayerMask.NameToLayer("Unwalkable");
                         DestroyImmediate(blocker.GetComponent<Renderer>());
                         blocker.transform.parent = transform;
+                        break;
+
+                    case 'P':
+                        var person = Instantiate(personPrefab, position + Vector3.up * .5f, Quaternion.identity, transform);
                         break;
                 }
             }
