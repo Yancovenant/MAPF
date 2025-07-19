@@ -16,16 +16,15 @@ public class SocketServer : MonoBehaviour {
     
     private TcpListener listener;
     private Thread serverThread;
-
     private CancellationTokenSource cts;
-
     private ConcurrentQueue<string> incomingMessages = new();
     
+    private bool isShuttingDown = false;
     void Start() {
         cts = new CancellationTokenSource();
         listener = new TcpListener(IPAddress.Any, GlobalConfig.Instance.unityPort);
         listener.Start();
-        serverThread = new (() => _handleConnections(cts.Token));
+        serverThread = new Thread(() => _handleConnections(cts.Token));
         serverThread.IsBackground = true;
         serverThread.Start();
         Debug.Log($"SocketServer: Started on port {GlobalConfig.Instance.unityPort}, {listener}");
@@ -55,33 +54,69 @@ public class SocketServer : MonoBehaviour {
     private void _handleConnections(CancellationToken token) {
         try {
             while (true && !token.IsCancellationRequested) {
-                using (TcpClient client = listener.AcceptTcpClient()) 
-                using (NetworkStream stream = client.GetStream()) {
+                TcpClient client = null;
+                NetworkStream stream = null;
+                try {
+                    client = listener.AcceptTcpClient();
+                    stream = client.GetStream();
                     byte[] buffer = new byte[client.ReceiveBufferSize];
                     int bytesRead = stream.Read(buffer, 0, buffer.Length);
                     string json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                     incomingMessages.Enqueue(json);
+                } catch (SocketException e) {
+                    if (isShuttingDown || token.IsCancellationRequested) break;
+                    Debug.LogError($"SocketServer: SocketException: {e.Message}");
+                } catch (Exception e) {
+                    if (isShuttingDown || token.IsCancellationRequested) break;
+                    Debug.LogError($"SocketServer: Exception: {e.Message}");
+                } finally {
+                    client?.Close();
+                    stream?.Close();
                 }
             }
+        } catch (ObjectDisposedException e) {
+            Debug.LogWarning($"SocketServer: ObjectDisposedException: {e.Message}");
         } catch (Exception e) {
             Debug.LogError($"SocketServer: Error handling connections: {e.Message}");
         }
     }
 
-    void OnDestroy() {
-        if (cts != null) {
-            cts.Cancel();
-            cts.Dispose();
+    void _cleanUp() {
+        if (isShuttingDown) return;
+        isShuttingDown = true;
+        try {
+            cts?.Cancel();
+        } catch (Exception e) {
+            Debug.LogWarning($"SocketServer: Exception during cts.Cancel(): {e.Message}");
         }
+
+        try {
+            listener?.Stop();
+        } catch (Exception e) {
+            Debug.LogWarning($"SocketServer: Exception during listener.Stop(): {e.Message}");
+        }
+
+        try {
+            if (serverThread != null && serverThread.IsAlive) {
+                if (!serverThread.Join(1000)) {
+                    Debug.LogWarning($"SocketServer: Thread did not exit in time");
+                }
+            }
+        } catch (Exception e) {
+            Debug.LogWarning($"SocketServer: Exception during serverThread.Join(): {e.Message}");
+        }
+
+        try {
+            cts?.Dispose();
+        } catch (Exception e) {
+            Debug.LogWarning($"SocketServer: Exception during cts.Dispose(): {e.Message}");
+        }
+    }
+    void OnDestroy() {
+        _cleanUp();
     }
     
     void OnApplicationQuit() {
-        listener?.Stop();
-        if (serverThread != null &&
-            serverThread.IsAlive) {
-                cts.Cancel();
-                cts.Dispose();
-                serverThread.Join();
-            }
+        _cleanUp();
     }
 }
