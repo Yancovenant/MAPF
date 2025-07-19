@@ -3,10 +3,11 @@ from starlette.staticfiles import StaticFiles
 from starlette.requests import Request
 
 from .AUGV.controller import AGENT_FRAMES
-from .AUGV.obstacle import AGENT_PROCS, AGENT_QUEUES
+from .AUGV.obstacle import AGENT_PROCS, AGENT_QUEUES, AGENT_OUT_QUEUES, AGENT_STATE, GLOBAL_AGENT
 import os
 from .tools.decorator import endroute, ROUTES, render_layout
 import threading, psutil, time
+import queue
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -102,6 +103,7 @@ async def on_shutdown():
 
 app = Starlette(routes=ROUTES, debug=True)
 app.add_exception_handler(404, not_found)
+app.add_event_handler("shutdown", on_shutdown)
 app.mount("/static", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 application = app
@@ -137,7 +139,7 @@ def _cleanup_all_queues():
             
             if agent_id in AGENT_OUT_QUEUES:
                 q = AGENT_OUT_QUEUES.get(agent_id)
-                while not q.empty():
+                while q and not q.empty():
                     try:
                         q.get_nowait()
                     except queue.Empty:
