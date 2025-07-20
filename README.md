@@ -8,7 +8,7 @@
 ## 📁 Project Structure
 
 ```
-MAPF/
+MAPF/ <-- Unity Project Parent Path
 ├── Assets/         # Unity project assets (scenes, scripts, prefabs, etc)
 ├── Backend/        # Python backend (YOLO, WebSocket, API, map management)
 ├── ProjectSettings/
@@ -24,9 +24,9 @@ MAPF/
 
 ```sh
 # Open terminal and cd to the folder where you want the project
-cd /path/to/your/projects
+cd /path/to/your/projects # Make sure that you cd to your unity project parent first.
 
-git clone https://github.com/yourusername/MAPF.git
+git clone https://github.com/Yancovenant/MAPF.git
 cd MAPF
 ```
 
