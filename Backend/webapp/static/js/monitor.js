@@ -115,6 +115,7 @@ class AUGVMonitor {
 
         // Remove empty state if agents exist
         this.removeEmptyState();
+        this.sortAgentFeeds();
     }
 
     displayFrame(agentId, frameData, detections) {
@@ -235,7 +236,7 @@ class AUGVMonitor {
 
         // Remove loading state
         const loadingDiv = agentElement.querySelector('.no-feed');
-        console.log(loadingDiv);
+        
         if (loadingDiv) {
             loadingDiv.style.display = 'none';
         }
@@ -277,8 +278,26 @@ class AUGVMonitor {
             }
         });
     }
+
+    sortAgentFeeds() {
+        const wrapper = $('#agents');
+        const feeds = wrapper.children('.cctv-feed').get();
+    
+        feeds.sort((a, b) => {
+            // Extract agent id from element id (e.g., "agent_AUGV_1")
+            const idA = a.id.replace('agent_', '');
+            const idB = b.id.replace('agent_', '');
+            return AGENT_ORDER.indexOf(idA) - AGENT_ORDER.indexOf(idB);
+        });
+    
+        // Re-append in sorted order
+        $.each(feeds, function(idx, item) {
+            wrapper.append(item);
+        });
+    }
 }
 
+const AGENT_ORDER = ["AUGV_1", "AUGV_2", "AUGV_3", "AUGV_4", "AUGV_5"];
 // Initialize monitor when page loads
 document.addEventListener('DOMContentLoaded', () => {
     document.head.innerHTML += `<link rel="stylesheet" href="/static/css/monitor.css">`;

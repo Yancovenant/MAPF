@@ -10,7 +10,7 @@
     <script src="/static/js/layout.js"></script>
 </head>
 <body>
-    <div class="container-fluid p-0">
+    <div class="container-fluid px-0 pb-md-0" style="padding-bottom: 70px;">
         <div class="row g-0 flex-nowrap">
             <!-- Sidebar for desktop/tablet -->
             <nav class="sidebar d-none d-md-block col-md-2 bg-dark text-white p-3 min-vh-100">
