@@ -49,7 +49,7 @@ git clone https://github.com/Yancovenant/MAPF.git
 ### 1. Install Dependencies
 
 #### Unity Dependencies
-- *NativeWebSocket** (required for AUGV-backend communication)
+- **NativeWebSocket** (required for AUGV-backend communication)
   - Open `Window > Package Manager`
   - Click the **+** button > "Add package from git URL"
   - Enter: `https://github.com/endel/NativeWebSocket.git#upm`
