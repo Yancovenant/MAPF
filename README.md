@@ -24,9 +24,9 @@ MAPF/
 
 ```sh
 # Open terminal and cd to the folder where you want the project
-cd /path/to/your/projects # Make sure to cd to your unity project folder first.
+cd /path/to/your/projects
 
-git clone https://github.com/Yancovenant/MAPF.git
+git clone https://github.com/yourusername/MAPF.git
 cd MAPF
 ```
 
