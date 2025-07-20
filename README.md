@@ -26,7 +26,7 @@ MAPF/ <-- Unity Project Parent Path
 # Open terminal and cd to the folder where you want the project
 cd /path/to/your/projects # Make sure that you cd to your unity project parent first.
 ```
-
+**Make sure that before cloning this repositry to 'cd' to your path project first, to make sure that unity & backend is integrated completly without any future error.**
 ```sh
 git clone https://github.com/Yancovenant/MAPF.git
 ```
