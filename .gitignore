@@ -3,12 +3,20 @@
 
 # Except
 !Backend/
+!Assets/
 !Assets/Scripts/
 !Assets/Editor/
 
 # --- /Assets Ignores ---
-Assets/Scripts/*.meta
-Assets/Scripts/*.asmdef
+
+Assets/**/*.meta
+Assets/**/*.asmdef
+Assets/Settings/
+Assets/Tests/
+Assets/TextMesh Pro/
+Assets/Textures/
+Assets/**.inputactions
+
 
 # --- /Backend Ignores --
 # Byte-compiled / optimized / DLL files
