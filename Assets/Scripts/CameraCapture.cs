@@ -50,8 +50,8 @@ public class CameraCapture : MonoBehaviour {
         if (cam == null) cam = GetComponentInChildren<Camera>();
         cam.forceIntoRenderTexture = true;
 
-        rt = new RenderTexture(resolutionWidth, resolutionHeight, 16);
-        tex = new Texture2D(resolutionWidth, resolutionHeight, TextureFormat.RGB24, false);
+        if (rt == null) rt = new RenderTexture(resolutionWidth, resolutionHeight, 16);
+        if (tex == null) tex = new Texture2D(resolutionWidth, resolutionHeight, TextureFormat.RGB24, false);
         cam.targetTexture = rt;
 
         running = true;
@@ -109,6 +109,16 @@ public class CameraCapture : MonoBehaviour {
             await ws.Close();
         }
         ws = null;
+
+        // TODO: clean up the render texture and texture2d.
+        if (rt != null) {
+            rt.Release();
+            rt = null;
+        }
+        if (tex != null) {
+            DestroyImmediate(tex);
+            tex = null;
+        }
     }
 
     private async void _connectBackend() {

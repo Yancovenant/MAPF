@@ -42,6 +42,12 @@ public class AUGV : MonoBehaviour {
 
         var targetNode = currentPath[currentIndex];
         var targetPosition = new Vector3(targetNode.worldPosition.x, transform.position.y, targetNode.worldPosition.z);
+        
+        // PURPOSE: performance improvement.
+        // TODO: this is a temporary fix to avoid multiple move coroutine running at the same time.
+        // TODO: we need to find a better way to handle this.
+        if (moveCoroutine != null) StopCoroutine(moveCoroutine);
+
         moveCoroutine = StartCoroutine(_Move(targetPosition));
     }
 
@@ -97,5 +103,9 @@ public class AUGV : MonoBehaviour {
         yield return new WaitForSeconds(waitAtWaypoint);
         State = AgentState.Idle;
         PathSupervisor.Instance.AssignNextPathToAgent(agentId);
+    }
+
+    void OnDestroy() {
+        if (moveCoroutine != null) StopCoroutine(moveCoroutine);
     }
 }

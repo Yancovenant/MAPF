@@ -146,7 +146,7 @@ public class PathSupervisor : MonoBehaviour {
                     (hit.point.z - grid.transform.position.z) / grid.nodeDiameter
                 );
                 Node node = grid.NodeFromWorldPoint(trueGridHitpoint);
-                
+                if (node == null) continue; // skip if no node is found.
                 Node agentNode = grid.NodeFromWorldPoint(agent.transform.position);
                 if (node == null || 
                     node.walkable == false || 
@@ -175,7 +175,7 @@ public class PathSupervisor : MonoBehaviour {
             if (nodeCounts[existing] > DETECTION_CONFIRM_FRAMES) {
                 if (!yoloObstacles.ContainsKey(existing)) {
                     yoloObstacles[existing] = now;
-                    node.walkable = false;
+                    if (existing != null) existing.walkable = false;
                 }
                 if (agentStopList.ContainsKey(agent.name)) {
                     // Debug.Log($"_test: on obstacle detection, now removing the agent from the agent stop list");
@@ -251,21 +251,59 @@ public class PathSupervisor : MonoBehaviour {
             foreach (var ag in waitingAdvance) {
                 if (!activePaths.TryGetValue(ag.name, out var path) || path == null || path.Count == 0) continue;
                 var occupied = occupiedNodes.Except(new[] { path.Last()}).ToHashSet();
-                if (path.Skip(1).Any(n => occupied.Contains(n))) {
+
+                // TODO: Avoid using Linq, multiple times.
+                // TODO: fix it for performance.
+                // @PARAM: occupied => occupiedNodes -> except the path.last() of this agent.
+                // @PARAM: occupiedNodes => all the occupied nodes in the environment.
+                bool hasOccupied = false;
+                for (int i = 1; i < path.Count; i++) {
+                    if (occupied.Contains(path[i])) {
+                        hasOccupied = true;
+                        break;
+                    }
+                }
+                if (hasOccupied) {
                     var newPath = _rerouteFromNode(path[0], path.Last(), occupied);
                     if (newPath != null && newPath.Count > 0) {
                         activePaths[ag.name] = newPath;
                         ag.PathChanged();
                     }
-                } else if (path.Skip(1).Any(n => occupiedNodes.Contains(n) && path.Count > 2)) {
-                    // ? this is to make sure that any occupied node that is,
-                    // ? also the last node of the agent, will be waiting for step.
-                    // ? above is the case where it doesnt include the agent own end node.
+                }
+                bool hasOccupiedNodes = false;
+                if (path.Count > 2) {
+                    for (int i = 1; i < path.Count; i++) {
+                        if (occupiedNodes.Contains(path[i])) {
+                            hasOccupiedNodes = true;
+                            break;
+                        }
+                    }
+                }
+                if (hasOccupiedNodes) {
                     ag.State = AUGV.AgentState.WaitingForStep;
                     activeAgents.Add(ag.name);
-                    // Debug.Log($"_test: the agent is set to waiting for step if any occupied nodes is in the path more than 2");
                     continue;
                 }
+                // if (path.Skip(1).Any(n => occupied.Contains(n))) {
+                //     var newPath = _rerouteFromNode(path[0], path.Last(), occupied);
+                //     if (newPath != null && newPath.Count > 0) {
+                //         activePaths[ag.name] = newPath;
+                //         ag.PathChanged();
+                //     }
+                // } else if (path.Skip(1).Any(n => occupiedNodes.Contains(n) && path.Count > 2)) {
+                //     // ? this is to make sure that any occupied node that is,
+                //     // ? also the last node of the agent, will be waiting for step.
+                //     // ? above is the case where it doesnt include the agent own end node.
+                //     ag.State = AUGV.AgentState.WaitingForStep;
+                //     activeAgents.Add(ag.name);
+                //     // Debug.Log($"_test: the agent is set to waiting for step if any occupied nodes is in the path more than 2");
+                //     continue;
+                // }
+
+                // PURPOSE: Package the code smaller.
+                // TODO: combine both statement into one.
+                // TODO: but still keep it in order, to avoid any bug,
+                // TODO: or bug changing the Dictionary in the middle of the code.
                 if (agentStopList.ContainsKey(ag.name) && Time.time - agentStopList[ag.name] > .5f) {
                     // Debug.Log($"_test: on update, now removing the agent from the agent stop list after sometime (0.5f)");
                     agentStopList.Remove(ag.name);
