@@ -11,7 +11,8 @@ from webapp.tools.decorator import endroute
 from webapp.AUGV.obstacle import AGENT_QUEUES, AGENT_STATE, AGENT_OUT_QUEUES, AGENT_PROCS, create_agent, GLOBAL_AGENT
 from webapp.tools.config import CONFIG
 
-import os, cv2, numpy as np, asyncio, json, socket
+import os, cv2, numpy as np, asyncio, json, socket, shutil
+from pathlib import Path
 
 from starlette.websockets import WebSocketDisconnect, WebSocket
 from starlette.responses import JSONResponse
@@ -167,6 +168,8 @@ async def save_map(req: Request):
 
     with open(file_path, "w") as f:
         json.dump({"name": map_name, "layout": map_data}, f)
+
+    copy_map_json_to_unity()
     return JSONResponse({"status": "ok"})
 
 
@@ -183,6 +186,18 @@ async def send_routes(req: Request):
     except Exception as e:
         return JSONResponse({"status": "error", "error": str(e)}, status_code=500)
 
+def copy_map_json_to_unity():
+    src_dir = Path(__file__).parent / 'maps_json'
+    unity_maps_dir = Path(__file__).parent.parent.parent.parent / 'Assets' / 'Maps'
+    if not src_dir.exists():
+        print(f"[MapCopy] Source directory does not exist: {src_dir}")
+        return
+    unity_maps_dir.mkdir(parents=True, exist_ok=True)
+    for json_file in src_dir.glob('*.json'):
+        dest = unity_maps_dir / json_file.name
+        shutil.copy2(json_file, dest)
+        print(f"[MapCopy] Copied {json_file} -> {dest}")
+    
 async def _cleanup(agent_id):
     """ Cleanup for agent disconnection """
     try:

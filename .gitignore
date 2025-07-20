@@ -8,6 +8,7 @@
 # --- /Assets Ignores ---
 Assets/Scripts/*.meta
 Assets/Scripts/*.asmdef
+Assets/Editor/
 
 # --- /Backend Ignores --
 # Byte-compiled / optimized / DLL files
