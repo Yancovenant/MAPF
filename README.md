@@ -71,13 +71,17 @@ pip install -e .
 ### 4. Running the Backend Server
 
 ```sh
-# From the Backend folder (venv activated)
+# From the Backend folder
 python -m webapp
 # or
 uvicorn webapp.ASGI:app --host 0.0.0.0 --port 8080 --workers 2
 ```
 - The backend will start on [http://localhost:8080](http://localhost:8080)
 - Unity will connect to the backend automatically.
+
+#### Backend first time config.
+- When it is the very first time your machine start the backend server, it would automatically run the test itself to determine the best config setup that you can use in your current device resources.
+- Make sure to update it directly inside the unity scene -> GlobalProperties gameObject.
 
 ---
 
