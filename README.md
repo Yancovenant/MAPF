@@ -26,9 +26,9 @@ MAPF/ <-- Unity Project Parent Path
 - If you starting a new unity project, be sure to name it `MAPF` for simpler integration for this repo.
 - Open the `MAPF` or /yourprojectname folder in Unity Hub.
 - Let Unity import and compile all assets.
-- NativeWebSocket Dependancies, how to install -> [Link Text](#how-to-install-)
+- NativeWebSocket Dependancies, how to install -> [How to install NativeWebSocket](#how-to-install-)
 - Go to Scene/MainScene and on Hierarcy tab, select -> EnvStart/GlobalProperties.
-- Fill in the backend server configuration to any best given recommendation, when you start the server -> @see [Link Text](#backend-first-time-config)
+- Fill in the backend server configuration to any best given recommendation, when you start the server -> @see [First Time Backend Config](#backend-first-time-config)
 
 ---
 
