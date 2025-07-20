@@ -91,6 +91,14 @@ uvicorn webapp.ASGI:app --host 0.0.0.0 --port 8080 --workers 2
 <img width="206" height="332" alt="image" src="https://github.com/user-attachments/assets/b71be797-f0e8-4b29-a523-fd7a76693d36" />
 
 
+#### Dashboard Server
+- `/monitor`
+
+- `/map`
+
+- `/client`
+
+
 ---
 
 ### 5. Unity Build/Run
