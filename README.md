@@ -25,9 +25,10 @@ MAPF/ <-- Unity Project Parent Path
 ```sh
 # Open terminal and cd to the folder where you want the project
 cd /path/to/your/projects # Make sure that you cd to your unity project parent first.
+```
 
+```sh
 git clone https://github.com/Yancovenant/MAPF.git
-cd MAPF
 ```
 
 ---
