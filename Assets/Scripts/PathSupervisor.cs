@@ -75,7 +75,7 @@ public class PathSupervisor : MonoBehaviour {
                 if (!GlobalConfig.Instance.agentYoloConfigs.Exists(a => a.agentId == agent.name)) {
                     GlobalConfig.Instance.agentYoloConfigs.Add(new GlobalConfig.AgentYoloConfig {
                         agentId = agent.name,
-                        useYolo = true
+                        useYolo = false
                     });
                 }
             }

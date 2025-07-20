@@ -3,7 +3,7 @@
 ###
 
 import uvicorn
-from .ASGI import application
+from .ASGI import application, app
 from webapp.tools.config import recommend_settings
 
 def main():
