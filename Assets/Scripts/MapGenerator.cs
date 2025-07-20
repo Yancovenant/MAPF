@@ -5,49 +5,13 @@
 
 using UnityEngine;
 using System.Collections.Generic;
+using System.IO;
+using MiniJSON;
 
 public class MapGenerator : MonoBehaviour {
     public GameObject personPrefab, roadPrefab, buildingPrefab, warehousePrefab, spawnMarkerPrefab, garageDoorPrefab, loadingSpotPrefab;
 
-    string[] mapLayout = new string[] {
-        "..BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-        "...........................................B",
-        "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR.B",
-        "R...R........................R...........R.B",
-        "R...R.BBBBBBBBBBBBBBBB.......W..BBBBBBBB.R.B",
-        "R...R.BBBBBBBBBBBBBBBB.......R..BBBBBBBB.R.B",
-        "R...R.BBBBBBBBBBBBBBBB.RRRRRRR..BBBBBBBB.R.B",
-        "RRWRR.BBBBBBBBBBBBBBBB.R........BBBBBBBB.R.B",
-        "R...R.BBBBBBBBBBBBBBBB.R.BBBBBBBBBBBBBBB.R.B",
-        "R.B.R.BBBBBBBBBBBBBBBB.R.BBBBBBBBBBBBBBB.R.B",
-        "R...R..................R.BBBBBBBBBBBBBBB.R.B",
-        "RRRRRRRRRRRRRRRRR......R...........BBBBB.R.B",
-        "R...............RRRRRRRRRRRRRRRRRR.BBBBB.R.B",
-        "R.BBBBBBBBBBBBB.R..R......R......R.BBBBB.R.B",
-        "R.BBBBBBBBBBBBB.R..W..BB..W..BB..W.BBBBB.R.B",
-        "R.BBBBBBBBBBBBB.R..R......R......R....BB.R.B",
-        "R.BBBBBBBBBBBBB.RRRRRRRRRRRRRRRRRRRRRR.B.R.B",
-        "RRRRRRRRRRRRRRRRR............R.BBBBB.R.B.R.B",
-        "R.BBBBBBRBBBBBB.RTBBBBBBBBBB.R.BBBBB.R.B.R.B",
-        "R.BBBBBBRBBBBBB.R.BBBBBBBBBB.R.BBBBB.R.B.R.B",
-        "R.BBBBBBRBBBBBB.R.BBBBBBBBBB.R.BBBBB.R.B.R.B",
-        "R.......R.BBBBB.R.BBBBBBBBBB.R.B.....R.B.R.B",
-        "RRRRRRRRR.BBBBB.R.BBBBBBBBBB.RPB.....R...R.B",
-        "....R.B.R.BBBBB.R............R.B.WRRRRRWRR.B",
-        ".WRRR.B.R.BBBBB.RRRRRRRRR....R.B.R...R.....B",
-        "....R.B.R.BBBBB.R.......RRRWRR.B.RRRRR......",
-        ".BB.R.B.R.......R.BBBBB.R....R...R..........",
-        ".BB.R.B.RRRRRRRRR.BBBBB.R.BB.RRRRRRRRRBBBBBB",
-        ".BB.R...R.......R.BBBBB.R.BB.R...R.BBRBBBBBB",
-        ".BB.RRWRR.BBBBB.W.BBBBB.R.BB.RRWRR.BBRBBBBBB",
-        ".BB.R...R.......R.......R....R...R.BBRBBBBBB",
-        ".BB.RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRBBBBBB",
-        ".BB.......R...R...R...R...R........BBBBBBBBB",
-        ".BBBBBB...R...R...R...R...R..BBBBBBBBBBBBBBB",
-        ".BBBBBB..MR..MR..MR..MR..MR..BBBBBBBBBBBBBBB",
-        ".BBBBBB..MS..MS..MS..MS..MS..BBBBBBBBBBBBBBB",
-        ".........MM..MM..MM..MM..MM..BBBBBBBBBBBBBBB",
-    };
+    string[] mapLayout;
 
     public Vector2Int mapSize;
     public List<Vector3> spawnPoints = new List<Vector3>();
@@ -56,8 +20,37 @@ public class MapGenerator : MonoBehaviour {
     public void GenerateMap() {
         spawnPoints.Clear();
         warehouseTargets.Clear();
+        mapLayout = LoadMapLayout();
+        if (mapLayout == null) {
+            Debug.LogError("MapGenerator: Failed to load map layout. Using fallback empty map.");
+            mapLayout = new string[] { "............................................", "............................................" };
+        }
         _GenerateMap();
         mapSize = new Vector2Int(mapLayout[0].Length, mapLayout.Length);
+    }
+
+    string[] LoadMapLayout() {
+        string fileName = GlobalConfig.Instance.GetSelectedMapFileName();
+        string path = Path.Combine(Application.dataPath, "Maps", fileName);
+        if (!File.Exists(path)) {
+            Debug.LogError($"MapGenerator: Map file not found: {path}");
+            return null;
+        }
+        try {
+            string json = File.ReadAllText(path);
+            var parsed = Json.Deserialize(json) as System.Collections.Generic.Dictionary<string, object>;
+            if (parsed != null && parsed.TryGetValue("layout", out var layoutObj) && layoutObj is System.Collections.IList layoutList) {
+                var lines = new List<string>();
+                foreach (var line in layoutList) lines.Add(line.ToString());
+                return lines.ToArray();
+            } else {
+                Debug.LogError($"MapGenerator: Invalid map JSON structure in {fileName}");
+                return null;
+            }
+        } catch (System.Exception ex) {
+            Debug.LogError($"MapGenerator: Error reading map file {fileName}: {ex.Message}");
+            return null;
+        }
     }
 
     void _GenerateMap() {

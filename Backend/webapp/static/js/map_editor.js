@@ -1,11 +1,11 @@
 const TILE_TYPES = [
-    {type: 'R', icon: 'fa-road', color: '#000'},
-    {type: 'B', icon: 'fa-building', color: '#BD2222'},
-    {type: 'W', icon: 'fa-warehouse', color: '#ff9800'},
-    {type: 'S', icon: 'fa-flag', color: '#4caf50'},
-    {type: 'P', icon: 'fa-person', color: '#4caf50'},
-    {type: 'M', icon: 'fa-vector-square', color: '#FFF'},
-    {type: '.', icon: 'fa-square', color: '#888'}
+    {type: 'R', icon: 'fa-road', color: '#000', title: 'Road'},
+    {type: 'B', icon: 'fa-building', color: '#BD2222', title: 'Building'},
+    {type: 'W', icon: 'fa-warehouse', color: '#ff9800', title: 'Warehouse'},
+    {type: 'S', icon: 'fa-flag', color: '#4caf50', title: 'Spawn'},
+    {type: 'P', icon: 'fa-person', color: '#4caf50', title: 'Person'},
+    {type: 'M', icon: 'fa-vector-square', color: '#FFF', title: 'Mat decoration'},
+    {type: '.', icon: 'fa-square', color: '#888', title: 'Empty'}
 ]
 
 const DEFAULT_ROWS = 37, DEFAULT_COLS = 44;
@@ -40,14 +40,13 @@ function renderPalette() {
     const $palette = $('#tilePalette');
     $palette.empty();
     TILE_TYPES.forEach(tile => {
-        const $btn = $(`<button class="btn btn-dark tile-btn p-2 shadow-lg" data-type="${tile.type}" title="${tile.type}"><i class="fas fa-fw ${tile.icon}"></i></button>`);
+        const $btn = $(`<button class="btn btn-dark tile-btn p-2 shadow-lg" data-type="${tile.type}" title="${tile.title}"><i class="fas fa-fw ${tile.icon}"></i></button>`);
         if (tile.type === currentTile) $btn.addClass('active');
         $btn.css('color', tile.color);
         $btn.on('click', function() {
             currentTile = tile.type;
             $('.tile-btn').removeClass('active');
             $btn.addClass('active');
-            console.log(currentTile, "from renderPalette");
         });
         $palette.append($btn);
     });
@@ -509,6 +508,7 @@ function deleteMap() {
     const name = getMapName();
     console.log(name);
     if (!confirm(`Delete map "${name}"?`)) return;
+    if (!confirm(`This action cannot be undone, are you sure?`)) return;
     $.ajax({
         url: `/maps/delete`,
         method: 'POST',

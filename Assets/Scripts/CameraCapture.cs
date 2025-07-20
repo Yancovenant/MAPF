@@ -76,6 +76,7 @@ public class CameraCapture : MonoBehaviour {
 
     public async void TrySendImageAndResponse() {
         if (!running) return;
+        if (rt == null || tex == null) return; // fix memory leak
         if (ws == null || ws.State != WebSocketState.Open) {
             _reconnectIfNeeded();
             return;
@@ -95,6 +96,7 @@ public class CameraCapture : MonoBehaviour {
         var req = AsyncGPUReadback.Request(rt, 0, TextureFormat.RGB24);
         while (!req.done) await Task.Delay(1);
         if (!req.hasError) {
+            if (rt == null || tex == null) return; // fix memory leak
             var raw = req.GetData<byte>();
             RenderTexture.active = rt;
             tex.LoadRawTextureData(raw);

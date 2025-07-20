@@ -5,6 +5,7 @@
 
 using UnityEngine;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 public class GlobalConfig : MonoBehaviour {
     public static GlobalConfig Instance { get; private set; }
@@ -38,6 +39,22 @@ public class GlobalConfig : MonoBehaviour {
     public int resolutionWidth = 640;
     public int resolutionHeight = 320;
     public int jpegQuality = 30;
+
+    // public enum MapName {
+    //     Default,
+    //     Map1,
+    //     Untitled
+    // }
+    [Header("Map Selection")]
+    public MapName selectedMap = MapName.Default;
+
+    public string GetSelectedMapFileName() {
+        // Convert PascalCase enum to file name (e.g. Map1 -> Map1.json)
+        string enumName = selectedMap.ToString();
+        // Insert underscores before numbers/uppercase, then lowercase
+        string fileName = Regex.Replace(enumName, "([a-z])([A-Z0-9])", "$1_$2").ToLower().Replace("_", "");
+        return fileName + ".json";
+    }
 
     void Awake() {
         if (Instance != null &&
