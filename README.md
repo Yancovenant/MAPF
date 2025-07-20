@@ -1,4 +1,4 @@
-<img width="1920" height="997" alt="image" src="https://github.com/user-attachments/assets/b535672c-cf2e-43c8-b3bc-bb06f350fb77" /># MAPF: Multi-Agent Pathfinding System
+# MAPF: Multi-Agent Pathfinding System
 
 > **Unity + Python Backend**  
 > Obstacle detection, pathfinding, map editing, and agent monitoring.
