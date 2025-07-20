@@ -141,7 +141,7 @@ class AUGVMixin:
                 "label": "person",
                 "confidence": round(float(box.conf[0]), 3),
                 "bbox": [round(v, 2) for v in xywh],
-                "feet": [feet_x, feet_y],
+                "feet": [float(feet_x), float(feet_y)],
                 # "offset": [dx, dy]
             })
         return detections, blocked_offsets, feet_list
@@ -178,7 +178,7 @@ class AUGVMixin:
                 "label": "person",
                 "confidence": round(float(conf_score), 3),
                 "bbox": [round(float(v), 2) for v in [x_mapped, y_mapped, w_mapped, h_mapped]],
-                "feet": [feet_x, feet_y],
+                "feet": [float(feet_x), float(feet_y)],
                 # "offset": [int(dx), int(dy)]
             })
         return detections, blocked_offsets, feet_list

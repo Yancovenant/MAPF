@@ -29,6 +29,10 @@ public class CameraCapture : MonoBehaviour {
 
     private bool running = false;
 
+    private bool isReconnecting = false;
+    private float lastReconnectAttempt = 0f;
+    private const float RECONNECT_DELAY = 5f;
+
     void Start() {
         agentId = gameObject.name;
         var config = GlobalConfig.Instance;
@@ -71,7 +75,11 @@ public class CameraCapture : MonoBehaviour {
     void Update() => ws?.DispatchMessageQueue();
 
     public async void TrySendImageAndResponse() {
-        if (!running || ws == null || ws.State != WebSocketState.Open) return;
+        if (!running) return;
+        if (ws == null || ws.State != WebSocketState.Open) {
+            _reconnectIfNeeded();
+            return;
+        }
         if (targetedFps > 0 && Time.time - lastSendTime < 1f / targetedFps) return;
         lastSendTime = Time.time;
 
@@ -106,9 +114,14 @@ public class CameraCapture : MonoBehaviour {
 
     private async void _cleanWs() {
         if (ws != null && ws.State == WebSocketState.Open) {
-            await ws.Close();
+            try {
+                await ws.Close();
+            } catch (Exception e) {
+                Debug.LogWarning($"{agentId} failed to close connection during cleanup: {e.Message}");
+            }
         }
         ws = null;
+        isReconnecting = false;
 
         // TODO: clean up the render texture and texture2d.
         if (rt != null) {
@@ -121,11 +134,52 @@ public class CameraCapture : MonoBehaviour {
         }
     }
 
+    private async void _reconnectIfNeeded() {
+        if (isReconnecting) return;
+        // Debounce.
+        if (Time.time - lastReconnectAttempt < RECONNECT_DELAY) return;
+
+        if (running && (ws == null || ws.State != WebSocketState.Open)) {
+            isReconnecting = true;
+            lastReconnectAttempt = Time.time;
+
+            Debug.Log($"{agentId} Attempting to reconnect to backend...");
+            try {
+                await Task.Delay(2000);
+                if (running) _connectBackend();
+            } finally {
+                isReconnecting = false;
+            }
+        }
+    }
+
     private async void _connectBackend() {
+        if (ws != null && ws.State == WebSocketState.Open) return;
+
+        if (ws != null) {
+            try {
+                await ws.Close();
+            } catch (Exception e) {
+                Debug.LogWarning($"{agentId} failed to close old connection: {e}");
+            } finally {
+                ws = null;
+            }
+        }
+
         ws = new WebSocket(wsUrl);
-        ws.OnOpen += () => Debug.Log($"{agentId} connected to backend");
+        ws.OnOpen += () => {
+            Debug.Log($"{agentId} connected to backend");
+            isReconnecting = false;
+        };
         ws.OnError += (e) => Debug.LogError($"{agentId} error: {e}");
-        ws.OnClose += (e) => Debug.Log($"{agentId} closed connection: {e}");
+        ws.OnClose += (e) => {
+            Debug.Log($"{agentId} closed connection: {e}");
+            if (running) {
+                ws = null;
+                // NativeWebSocket Endel is Normal for NormalClosure.
+                if (e != WebSocketCloseCode.Normal) _reconnectIfNeeded();
+            }
+        };
         ws.OnMessage += (bytes) => {
             var message = System.Text.Encoding.UTF8.GetString(bytes);
             var parsed = MiniJSON.Json.Deserialize(message) as System.Collections.Generic.Dictionary<string, object>;
@@ -145,8 +199,9 @@ public class CameraCapture : MonoBehaviour {
             await ws.Connect();
         } catch (Exception e) {
             Debug.LogWarning($"{agentId} failed to connect to backend: {e}");
-            await Task.Delay(1000);
-            if (running) _connectBackend();
+            // await Task.Delay(1000);
+            // if (running) _connectBackend();
+            ws = null;
         }
     }
 } 
