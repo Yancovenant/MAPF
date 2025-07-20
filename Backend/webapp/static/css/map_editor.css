@@ -1,0 +1,36 @@
+.tile-palette {
+    position: fixed;
+    bottom: 80px;
+    background: #23272b;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.tile-btn {
+    padding: 8px 12px;
+}
+.tile-btn.active, .tile-btn:hover {
+    background: #00b894;
+    color: #fff;
+}
+@media (min-width: 768px) {
+    .tile-palette {
+        position: absolute;
+        left: auto; right: 24px; bottom: 24px;
+        flex-direction: column;
+        width: auto;
+        border-radius: 12px;
+    }
+} 
+
+#page-content {
+    padding: 0 !important;
+    background: #1a1a1a;
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    overflow-x: hidden;
+}

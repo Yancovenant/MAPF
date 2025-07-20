@@ -11,7 +11,7 @@ from webapp.tools.decorator import endroute
 from webapp.AUGV.obstacle import AGENT_QUEUES, AGENT_STATE, AGENT_OUT_QUEUES, AGENT_PROCS, create_agent, GLOBAL_AGENT
 from webapp.tools.config import CONFIG
 
-import cv2, numpy as np, asyncio, json, socket
+import os, cv2, numpy as np, asyncio, json, socket
 
 from starlette.websockets import WebSocketDisconnect, WebSocket
 from starlette.responses import JSONResponse
@@ -124,6 +124,53 @@ async def monitor_ws(ws: WebSocket):
         MONITOR_CLIENTS.discard(ws)
 
 # Controller json
+MAPS_DIR = os.path.join(os.path.dirname(__file__), "maps_json")
+os.makedirs(MAPS_DIR, exist_ok=True)
+
+@endroute("/maps", type="http", methods=["GET"])
+async def get_maps(req: Request):
+    map_list = [f[:-5] for f in os.listdir(MAPS_DIR) if f.endswith(".json")]
+    return JSONResponse(map_list)
+
+@endroute("/maps/{map_name}", type="http", methods=["GET"])
+async def get_map(req: Request):
+    map_name = req.path_params["map_name"]
+    file_path = os.path.join(MAPS_DIR, f"{map_name}.json")
+    with open(file_path, "r") as f:
+        return JSONResponse(json.load(f))
+
+@endroute("/maps/delete", type="http", methods=["POST"])
+async def delete_map(req: Request):
+    body = await req.json()
+    map_name = body.get("name")
+    file_path = os.path.join(MAPS_DIR, f"{map_name}.json")
+    print(map_name)
+    if map_name == "default":
+        return JSONResponse({"status": "error", "error": "Default map cannot be deleted"}, status_code=400)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return JSONResponse({"status": "ok"})
+    else:
+        return JSONResponse({"status": "error", "error": "Map not found"}, status_code=404)
+
+@endroute("/maps/save", type="http", methods=["POST"])
+async def save_map(req: Request):
+    data = await req.json()
+    map_name = data.get("name")
+    map_data = data.get("layout")
+    file_path = os.path.join(MAPS_DIR, f"{map_name}.json")
+    
+    if not map_data or not isinstance(map_data, list):
+        return JSONResponse({"status": "error", "error": "Invalid map data"}, status_code=400)
+    if map_name == "default":
+        return JSONResponse({"status": "error", "error": "Default map cannot be saved"}, status_code=400)
+
+    with open(file_path, "w") as f:
+        json.dump({"name": map_name, "layout": map_data}, f)
+    return JSONResponse({"status": "ok"})
+
+
+
 @endroute("/send-routes", type="http", methods=["POST"])
 async def send_routes(req: Request):
     body = await req.json()

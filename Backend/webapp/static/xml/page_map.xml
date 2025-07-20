@@ -1,7 +1,7 @@
 
 <div class="d-flex flex-column" style="height:100vh;">
     <div class="d-flex align-items-center px-3 py-2 bg-dark text-white border-bottom">
-        <input type="text" id="mapName" class="form-control map-name-input" placeholder="Map Name">
+        <input type="text" id="mapName" class="form-control me-3" placeholder="Map Name" style="max-width:200px;">
         <div class="btn-group ms-2">
             <button class="btn btn-outline-primary" id="newMapBtn" title="New"><i class="fas fa-file"></i></button>
             <button class="btn btn-outline-success" id="saveMapBtn" title="Save"><i class="fas fa-save"></i></button>
@@ -10,10 +10,10 @@
         </div>
         <select id="mapList" class="form-select ms-2" style="width:auto;display:none;"></select>
     </div>
-    <div class="map-grid-wrapper">
-        <div id="mapGrid" class="map-grid"></div>
-    </div>
-    <div class="tile-palette" id="tilePalette">
+    
+    <div class="container h-100" id="mapContainer"></div>
+
+    <div class="tile-palette p-2 rounded shadow" id="tilePalette">
         <!-- Tile buttons will be injected by JS -->
     </div>
 </div>

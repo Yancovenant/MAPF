@@ -280,20 +280,15 @@ class AUGVMonitor {
     }
 
     sortAgentFeeds() {
-        const wrapper = $('#agents');
-        const feeds = wrapper.children('.cctv-feed').get();
-    
+        const wrapper = document.getElementById('agents');
+        if (!wrapper) return;
+        const feeds = Array.from(wrapper.getElementsByClassName('cctv-feed'));
         feeds.sort((a, b) => {
-            // Extract agent id from element id (e.g., "agent_AUGV_1")
             const idA = a.id.replace('agent_', '');
             const idB = b.id.replace('agent_', '');
             return AGENT_ORDER.indexOf(idA) - AGENT_ORDER.indexOf(idB);
         });
-    
-        // Re-append in sorted order
-        $.each(feeds, function(idx, item) {
-            wrapper.append(item);
-        });
+        feeds.forEach(feed => wrapper.appendChild(feed));
     }
 }
 
