@@ -18,113 +18,107 @@ MAPF/ <-- Unity Project Parent Path
 
 ---
 
-## 🚀 First-Time Installation
+## 🚀 Quick Start
 
-### 1. Unity Setup
+### Option 1: Import Unity Package (Recommended)
 
-- Download and import MAPF.unitypackage on this repo.
-- If you starting a new unity project, be sure to name it `MAPF` for simpler integration for this repo.
-- Open the `MAPF` or /yourprojectname folder in Unity Hub.
-- Let Unity import and compile all assets.
-- NativeWebSocket Dependancies, how to install -> [How to install NativeWebSocket](#how-to-install-)
-- Go to Scene/MainScene and on Hierarcy tab, select -> EnvStart/GlobalProperties.
-- Fill in the backend server configuration to any best given recommendation, when you start the server -> @see [First Time Backend Config](#backend-first-time-config)
+1. **Download** `MAPF.unitypackage` from this repository
+2. **Create** a new Unity project named `MAPF`
+3. **Import** the package: `Assets > Import Package > Custom Package`
+4. **Install NativeWebSocket** (see [Dependencies](#-dependencies) below)
+5. **Configure** the backend settings in `Scene/MainScene > EnvStart/GlobalProperties`
 
----
+### Option 2: Clone Repository
 
-### 2. Clone the Repository
-
+1. **Git Clone**
 ```sh
-# Open terminal and cd to the folder where you want the project
-cd /path/to/your/projects # Make sure that you cd to your unity project parent first.
-```
+# Navigate to your Unity projects folder
+cd /path/to/your/unity/projects
 
-**!Important!**
-rename your project unity into 'MAPF'.
-otherwise you need to copy&paste the /Backend and /Assets folder to your project.
-
-or simply create a new unity project and name it to 'MAPF'
-
-**Make sure that before cloning this repository to 'cd' to your path project first, to make sure that unity & backend is integrated completly without any future error.**
-
-```sh
+# Clone the repository
 git clone https://github.com/Yancovenant/MAPF.git
 ```
+2. **Copy and Paste** `/MAPF/Backend` and `/MAPF/Assets/` back to your unity projects folder.
+
+**Important:** Name your Unity project `MAPF` for seamless integration using git clone.
 
 ---
 
-### 3. Python Backend Setup
+## 🔧 Setup
 
-> **Backend is inside the `Backend/` folder.**
+### 1. Install Dependencies
 
-#### a. Install backend dependencies
+#### Unity Dependencies
+- *NativeWebSocket** (required for AUGV-backend communication)
+  - Open `Window > Package Manager`
+  - Click the **+** button > "Add package from git URL"
+  - Enter: `https://github.com/endel/NativeWebSocket.git#upm`
+
+#### Python Backend Dependencies
+```sh
+cd Backend
+
+# Option 1:
+pip install --upgrade pip
+pip install -r requirements.txt
+# Option 2:
+pip install -e .
+```
+
+### 2. Start the Backend Server
 
 ```sh
 cd Backend
 
-# Install backend
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# or simpy do
-
-pip install -e .
-```
-
----
-
-### 4. Running the Backend Server
-
-```sh
-# From the Backend folder
-python -m webapp
-# or
+# Option 1:
 uvicorn webapp.ASGI:app --host 0.0.0.0 --port 8080 --workers 2
+# Option 2:
+python -m webapp
 ```
-- The backend will start on [http://localhost:8080](http://localhost:8080)
-- Unity will connect to the backend automatically.
 
-#### Backend first time config.
-- When it is the very first time your machine start the backend server, it would automatically run the test itself to determine the best config setup that you can use in your current device resources.
-- Make sure to update it directly inside the unity scene -> GlobalProperties gameObject.
-<img width="362" height="190" alt="image" src="https://github.com/user-attachments/assets/6332d540-892e-4f03-8a67-e249f76a522c" />
-<img width="206" height="332" alt="image" src="https://github.com/user-attachments/assets/b71be797-f0e8-4b29-a523-fd7a76693d36" />
+The server will start at [http://localhost:8080](http://localhost/8080)
 
+### 3. COnfigure Backend Settings
 
-#### Dashboard Server
-- `/monitor`
-  <img width="1920" height="997" alt="image" src="https://github.com/user-attachments/assets/18a23d17-e5ef-417a-b2c5-dc565052b536" />
-  <img width="501" height="984" alt="image" src="https://github.com/user-attachments/assets/79c6eb53-ad7b-47cb-b016-b13dccf52d44" />
+On first run, the backend automatically tests your system and recommends optimal settings:
+- **FPS** for your device
+- **YOLO model** (ONNX or PT)
+- **Inference method** (threading or multiprocessing)
+- **Maximum agents** for YOLO detection
 
-- `/map`
-  <img width="1920" height="997" alt="image" src="https://github.com/user-attachments/assets/18f12278-224d-4fc4-b242-12a9babd5a8e" />
-  <img width="501" height="984" alt="image" src="https://github.com/user-attachments/assets/f621d67c-7ab8-491a-97a3-52b5fcb1db2c" />
-  
-- `/client`
-  <img width="1920" height="997" alt="image" src="https://github.com/user-attachments/assets/78092d2e-591e-4bac-b984-e517b278945e" />
-  <img width="501" height="984" alt="image" src="https://github.com/user-attachments/assets/19f1ff89-fafc-4d67-af13-e7d8f3e4f4ec" />
+Copy these settings to Unity: `Scene/MainScene > EnvStart/GlobalProperties`
+
+### 4. Run Unity
+
+- Press **Play** in Unity Editor
+- Configure YOLO agents in `EnvStart/GlobalProperties > Agent Yolo Config`
+- **Note:** More YOLO agents = higher resource usage
 
 ---
 
-### 5. Unity Build/Run
+## 🌐 Web Dashboard
 
-- Press **Play** in the Unity Editor to start the simulation.
-- on Hierarcy select > EnvStart/GlobalProperties, there you will find `Agent YOLO Config` and select the AUGV that you wanted to use YOLO detection **the more agent you set to use YOLO, the more usage device resources**
+Access these tools at [http://localhost:8080](http://localhost/8080):
+
+- **`/monitor`** - Live agent monitoring and video feeds
+  <img width="960" height="498.5" alt="image" src="https://github.com/user-attachments/assets/18a23d17-e5ef-417a-b2c5-dc565052b536" />
+  <img width="250.5" height="492" alt="image" src="https://github.com/user-attachments/assets/79c6eb53-ad7b-47cb-b016-b13dccf52d44" />
+
+- **`/map`** - Visual map editor
+  <img width="960" height="498.5" alt="image" src="https://github.com/user-attachments/assets/18f12278-224d-4fc4-b242-12a9babd5a8e" />
+  <img width="250.5" height="492" alt="image" src="https://github.com/user-attachments/assets/f621d67c-7ab8-491a-97a3-52b5fcb1db2c" />
+  
+- **`/client`** - Route planning interface
+  <img width="960" height="498.5" alt="image" src="https://github.com/user-attachments/assets/78092d2e-591e-4bac-b984-e517b278945e" />
+  <img width="250.5" height="492" alt="image" src="https://github.com/user-attachments/assets/19f1ff89-fafc-4d67-af13-e7d8f3e4f4ec" />
 
 ---
 
 ## 🧩 Dependencies
 
 ### Unity
-- [NativeWebSocket](https://github.com/endel/NativeWebSocket) (for agent-backend communication)
+- [NativeWebSocket](https://github.com/endel/NativeWebSocket) package (for agent-backend communication)
 - No extra Unity packages required (all scripts included)
-
-#### How to Install ?
-- Window -> Assets/Package Management
-- [Top Left Corner] (+) plus icon, add from git url
-```sh
-https://github.com/endel/NativeWebSocket.git#upm
-```
 
 ### Python Backend
 - Python 3.10+
@@ -140,19 +134,19 @@ https://github.com/endel/NativeWebSocket.git#upm
 
 ## 🗺️ Features
 
-- **Multi-agent A* pathfinding** with conflict resolution
-- **YOLO obstacle detection** (Python backend)
-- **Map editor** (web frontend, Konva.js)
-- **Live agent monitoring** (web dashboard)
-- **Dynamic map loading** (Unity + backend)
-- **WebSocket communication** (Unity <-> Python)
-- **Warehouse/road placement rules** (map editor)
-- **Local storage for map drafts**
-- **Client input AUGV's routes**
+- **Smart Multi-agent AStar pathfinding** - A* algorithm with conflict resolution
+- **Real-Time obstacle detection** - YOLO-powered object recognition (Python backend)
+- **Visual Map editor** - Drag-and-drop interface (web frontend, Konva.js)
+- **Live agent monitoring** - Real-time agent tracking (web dashboard)
+- **Dynamic map loading** - Hot-swappable map configurations (Unity + backend)
+- **WebSocket communication** - Seamless (Unity <> Python) Integration
+- **Warehouse/road placement rules** - Intelligent building constraints (map editor)
+- **Local storage for map drafts** - Auto-save map drafts
+- **Route Planning input AUGV's routes** - Path assignment for agents
 
 ---
 
-## ⚡ Performance & Code Design
+## ⚡ Performance Optimizations & Code Design
 
 - **Async & Coroutines:**
   - Unity uses coroutines for agent movement and camera capture to avoid blocking the main thread.
@@ -178,12 +172,27 @@ https://github.com/endel/NativeWebSocket.git#upm
 
 ---
 
+## 🚀 Technical Highlights
+
+### Multi-Agent Pathfinding Engine
+- **Centralized Coordination** - Supervisor system manages all agent movements
+- **Conflict Resolution** - Advance algorithms prevent collision and deadlocks
+- **Lockstep Movement** - All agents move in perfect synchronization
+- **Scalable Architecture** - Handles multiple agents efficiently
+
+### Obstacle Detection System
+- **Universal Compatibility** - Works on CPU/GPU with ONNX/PyTorch models
+- **20x Performance Boost** - Numba JIT compilation
+- **Real-Time Integration** - Live feeds to both Unity and web dashboard
+- **Flexible Configuration** - Adapts to your hardware capabilities
+
+---
+
 ## 🛠️ Useful Commands
 
 ```sh
 # Start backend server
-cd Backend
-python -m webapp
+cd Backend && python -m webapp
 
 # Install backend dependencies
 pip install -r requirements.txt
@@ -196,14 +205,12 @@ pip install -e .
 
 ---
 
-## 📝 Notes
+## 📝 Important Notes
 
 - **Backend is NOT included in Unity builds.**  
   Deploy/copy the `Backend/` folder separately if needed.
-- **For development:**  
-  Always run both Unity and the backend server.
-- **For map editing:**  
-  Use the web editor at [http://localhost:8080](http://localhost:8080).
+- **Resource Usage** - YOLO detection is resource-intensive. Configure based on your hardware.
+- **Development Mode** - Always run both Unity and backend for full functionality.
 
 ---
 
@@ -214,4 +221,5 @@ pip install -e .
 
 ---
 
+**Ready to build the future of autonomous navigation! 🚗🤖** 
 **Happy coding! 🚗🤖**
