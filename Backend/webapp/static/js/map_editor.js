@@ -1,8 +1,10 @@
 const TILE_TYPES = [
     {type: 'R', icon: 'fa-road', color: '#000'},
-    {type: 'B', icon: 'fa-building', color: '#795548'},
+    {type: 'B', icon: 'fa-building', color: '#BD2222'},
     {type: 'W', icon: 'fa-warehouse', color: '#ff9800'},
     {type: 'S', icon: 'fa-flag', color: '#4caf50'},
+    {type: 'P', icon: 'fa-person', color: '#4caf50'},
+    {type: 'M', icon: 'fa-vector-square', color: '#FFF'},
     {type: '.', icon: 'fa-square', color: '#888'}
 ]
 
@@ -14,8 +16,15 @@ let isMouseDown = false;
 let startCell = null;
 let ghostRects = [];
 
+let warehouseGhostRects = [];
+let warehouseGhostValid = false;
+
+let ghostLineValid = true;
+let ghostLineFlashInterval = null;
+
 $(function() {
     // on load
+    _getLocalStorage();
     document.head.innerHTML += `<link rel="stylesheet" href="/static/css/map_editor.css">`;
     renderPalette();
     renderGrid();
@@ -75,22 +84,48 @@ function renderGrid() {
                 strokeWidth: 1
             });
             rect.on('mousedown touchstart', (e) => {
-                if (currentTile === 'W') {
-                    mapData[r][c] = currentTile;
-                    rect.fill(getTileColor(currentTile));
-                    layer.draw();
+                
+                if (isInWarehouseArea(r, c) && currentTile !== '.' && currentTile !== 'R') {
                     return;
+                }
+
+                if (currentTile === 'R' && isWarehouseDiagonal(r, c)) {
+                    return;
+                }
+
+                if (currentTile === 'W') {
+                    if (warehouseGhostValid) {
+                        placeWarehouse(r, c);
+                    }
+                    return;
+                }
+                if (cell === 'W') {
+                    if (isWarehouseCenter(r, c)) {
+                        removeWarehouse(r, c);
+                    } else {
+                        mapData[r][c] = currentTile;
+                        rect.fill(getTileColor(currentTile));
+                        layer.draw();
+                        return;
+                    }
+                } else {
+                    console.log(cell, "from renderGrid");
                 }
                 isMouseDown = true;
                 startCell = {r, c};
                 updateGhostLine(r, c);
             });
             rect.on('mouseover', (e) => {
-                if (isMouseDown && startCell && currentTile !== 'W') {
+                if (currentTile === 'W') {
+                    updateWarehouseGhost(r, c);
+                } else if (isMouseDown && startCell && currentTile !== 'W') {
                     updateGhostLine(r, c);
                 }
             });
             rect.on('mouseup touchend', (e) => {
+                if (currentTile === 'W') {
+                    clearWarehouseGhost();
+                }
                 if (isMouseDown && startCell && currentTile !== 'W') {
                     applyGhostLine();
                 }
@@ -146,34 +181,74 @@ function renderGrid() {
         const dx = endC - startC;
         const dy = endR - startR;
 
+        ghostLineValid = true;
+        let cells = [];
+
+
         if (Math.abs(dx) >= Math.abs(dy)) {
             // horizontal line
             const step = dx > 0 ? 1 : -1;
             for (let c = startC; c !== endC + step; c += step) {
-                ghostRects.push(drawGhostRect(startR, c));
+                // ghostRects.push(drawGhostRect(startR, c));
+                cells.push([startR, c]);
             }
         } else {
             // vertical line
             const step = dy > 0 ? 1 : -1;
             for (let r = startR; r !== endR + step; r += step) {
-                ghostRects.push(drawGhostRect(r, startC));
+                // ghostRects.push(drawGhostRect(r, startC));
+                cells.push([r, startC]);
             }
         }
+
+        // validate
+        for (const [r, c] of cells) {
+            if (isInWarehouseArea(r, c) && currentTile !== '.' && currentTile !== 'R') {
+                ghostLineValid = false;
+            }
+            if (currentTile === 'R' && isWarehouseDiagonal(r, c)) {
+                ghostLineValid = false;
+            }
+        }
+
+        for (const [r, c] of cells) {
+            ghostRects.push(drawGhostRect(r, c, ghostLineValid));
+        }
+
         layer.batchDraw();
+
+        if (!ghostLineValid) {
+            let flashOn = true;
+            if (ghostLineFlashInterval) clearInterval(ghostLineFlashInterval);
+            ghostLineFlashInterval = setInterval(() => {
+                ghostRects.forEach(rect => {
+                    rect.fill(flashOn ? '#e74c3cAA' : 'rgba(0,0,0,0)');
+                });
+                layer.batchDraw();
+                flashOn = !flashOn;
+            }, 150);
+        } else if (ghostLineFlashInterval) {
+            clearInterval(ghostLineFlashInterval);
+            ghostLineFlashInterval = null;
+        }
     }
     function clearGhostLine() {
         ghostRects.forEach(rect => rect.destroy());
         ghostRects = [];
+        if (ghostLineFlashInterval) {
+            clearInterval(ghostLineFlashInterval);
+            ghostLineFlashInterval = null;
+        }
         layer.batchDraw();
     }
-    function drawGhostRect(r, c) {
+    function drawGhostRect(r, c, isValid = true) {
         const ghost = new Konva.Rect({
             x: c * 20,
             y: r * 20,
             width: 20,
             height: 20,
-            fill: '#00b89455',
-            stroke: '#00b894',
+            fill: isValid ? '#00b89455' : '#e74c3cAA',
+            stroke: isValid ? '#00b894' : '#e74c3c',
             strokeWidth: 2,
             listening: false
         });
@@ -182,13 +257,152 @@ function renderGrid() {
     }
     function applyGhostLine() {
         if (!startCell || ghostRects.length === 0) return;
+        let valid = true;
         ghostRects.forEach(rect => {
             const r = Math.round(rect.y() / 20);
             const c = Math.round(rect.x() / 20);
-            mapData[r][c] = currentTile;
+
+            // prevent placing reserved warehouse cells except for '.' and 'R'
+            if (isInWarehouseArea(r, c) && currentTile !== '.' && currentTile !== 'R') {
+                valid = false;
+                // optionatlly flash cell red
+            }
+            if (currentTile === 'R' && isWarehouseDiagonal(r, c)) {
+                valid = false;
+            }
         });
+        if (valid) {
+            ghostRects.forEach(rect => {
+                const r = Math.round(rect.y() / 20);
+                const c = Math.round(rect.x() / 20);
+                mapData[r][c] = currentTile;
+            });
+            renderGrid();
+        }
+    }
+
+    function updateWarehouseGhost(centerR, centerC) {
+        clearWarehouseGhost();
+        warehouseGhostValid = isWarehousePlacementValid(centerR, centerC);
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                const r = centerR + dr;
+                const c = centerC + dc;
+                if (r < 0 || r >= mapData.length || c < 0 || c >= mapData[0].length) continue;
+                let fill, stroke;
+                if (dr === 0 && dc === 0) {
+                    // center cell
+                    fill = warehouseGhostValid ? '#FFD600AA' : '#e74c3cAA';
+                    stroke = warehouseGhostValid ? '#FFD600' : '#e74c3c';
+                } else {
+                    // diagonal 
+                    fill = warehouseGhostValid ? '#00b89455' : '#e74c3c55';
+                    stroke = warehouseGhostValid ? '#00b894' : '#e74c3c';
+                }
+                const ghost = new Konva.Rect({
+                    x: c * 20,
+                    y: r * 20,
+                    width: 20,
+                    height: 20,
+                    fill,
+                    stroke,
+                    strokeWidth: 2,
+                    listening: false
+                });
+                warehouseGhostRects.push(ghost);
+                layer.add(ghost);
+            }
+        }
+        layer.batchDraw();
+    }
+    function clearWarehouseGhost() {
+        warehouseGhostRects.forEach(rect => rect.destroy());
+        warehouseGhostRects = [];
+        layer.batchDraw();
+    }
+    function isWarehousePlacementValid(centerR, centerC) {
+        // check 3x3 area
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                const r = centerR + dr;
+                const c = centerC + dc;
+                if (r < 0 || r >= mapData.length || c < 0 || c >= mapData[0].length) return false;
+                if (isInWarehouseArea(r, c) && !(dr === 0 && dc === 0 && mapData[r][c] === 'W')) return false;
+                
+                const val = mapData[r][c];
+                
+                // center: allow '.', 'R', or 'W' for overwrite/removal
+                if (dr === 0 && dc === 0) {
+                    if (val !== '.' && val !== 'R' && val !== 'W') return false;
+                } else if (Math.abs(dr) === 1 && Math.abs(dc) === 1) {
+                    // Diagonal must be '.'
+                    if (val !== '.') return false;
+                } else {
+                    // Side: allow '.', 'R'
+                    if (val !== '.' && val !== 'R') return false;
+                }
+            }
+        }
+        return true;
+    }
+    function placeWarehouse(centerR, centerC) {
+        mapData[centerR][centerC] = 'W';
         renderGrid();
     }
+    function isWarehouseCenter(r, c) {
+        // check if this cell is the center of a 3x3 warehouse
+        if (mapData[r][c] !== 'W') return false;
+        if (r < 1 || r >= mapData.length - 1 || c < 1 || c >= mapData[0].length - 1) return false;
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                const rr = r + dr, cc = c + dc;
+                if (rr < 0 || rr >= mapData.length || cc < 0 || cc >= mapData[0].length) return false;
+                if (dr === 0 && dc === 0) continue; // center
+                if (Math.abs(dr) === 1 && Math.abs(dc) === 1) {
+                    // diagonal
+                    if (mapData[rr][cc] !== '.') return false;
+                } else {
+                    // side
+                    if (mapData[rr][cc] !== '.' && mapData[rr][cc] !== 'R') return false;
+                }
+            }
+        }
+        return true;
+    }
+    function removeWarehouse(centerR, centerC) {
+        if (mapData[centerR][centerC] === 'W') {
+            mapData[centerR][centerC] = '.';
+        }
+        clearWarehouseGhost();
+        renderGrid();
+    }
+    function isInWarehouseArea(r, c) {
+        for (let rr = 1; rr < mapData.length - 1; rr++) {
+            for (let cc = 1; cc < mapData[0].length - 1; cc++) {
+                if (mapData[rr][cc] === 'W') {
+                    if (Math.abs(rr - r) <= 1 && Math.abs(cc - c) <= 1) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    function isWarehouseDiagonal(r, c) {
+        for (let rr = 1; rr < mapData.length - 1; rr++) {
+            for (let cc = 1; cc < mapData[0].length - 1; cc++) {
+                if (mapData[rr][cc] === 'W') {
+                    if (Math.abs(rr - r) === 1 && Math.abs(cc - c) === 1) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    $(document).on('focusout blur beforeunload', _setLocalStorage);
+    _setLocalStorage();
 }
 
 
@@ -316,4 +530,23 @@ function newMap() {
         }
     }
     renderGrid();
+}
+
+function _setLocalStorage() {
+    const name = $("#mapName").val().trim() || 'untitled';
+    const layout = mapData.map(row => row.join(''));
+    localStorage.setItem(`mapEditorDraft`, JSON.stringify({name, layout}));
+}
+
+function _getLocalStorage() {
+    const draft = localStorage.getItem(`mapEditorDraft`);
+    if (!draft) return;
+    try {
+        const {name, layout} = JSON.parse(draft);
+        $('#mapName').val(name);
+        mapData = layout.map(row => row.split(''));
+        renderGrid();
+    } catch (e) {
+        console.error('Failed to parse localStorage draft', e);
+    }
 }
