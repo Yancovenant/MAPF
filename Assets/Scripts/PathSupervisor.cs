@@ -109,7 +109,7 @@ public class PathSupervisor : MonoBehaviour {
 
         float now = Time.time;
         int camHeight = GlobalConfig.Instance.resolutionHeight;
-        
+
         if (!agentObstacleCounts.ContainsKey(agent.name))
             agentObstacleCounts[agent.name] = new Dictionary<Node, int>();
         var nodeCounts = agentObstacleCounts[agent.name];
@@ -140,7 +140,13 @@ public class PathSupervisor : MonoBehaviour {
                 marker.transform.localScale = Vector3.one * 0.2f;
                 GameObject.Destroy(marker, 2f);
 
-                Node node = grid.NodeFromWorldPoint(hit.point);
+                Vector3 trueGridHitpoint = new Vector3(
+                    (hit.point.x - grid.transform.position.x) / grid.nodeDiameter,
+                    0,
+                    (hit.point.z - grid.transform.position.z) / grid.nodeDiameter
+                );
+                Node node = grid.NodeFromWorldPoint(trueGridHitpoint);
+                
                 Node agentNode = grid.NodeFromWorldPoint(agent.transform.position);
                 if (node == null || 
                     node.walkable == false || 
@@ -171,10 +177,14 @@ public class PathSupervisor : MonoBehaviour {
                     yoloObstacles[existing] = now;
                     node.walkable = false;
                 }
-                if (agentStopList.ContainsKey(agent.name)) agentStopList.Remove(agent.name);
+                if (agentStopList.ContainsKey(agent.name)) {
+                    // Debug.Log($"_test: on obstacle detection, now removing the agent from the agent stop list");
+                    agentStopList.Remove(agent.name);
+                }
             } else {
                 if (!agentStopList.ContainsKey(agent.name)) agentStopList[agent.name] = now;
                 agentStopList[agent.name] = now;
+                // Debug.Log($"_test: on obstacle detection, now adding the agent to the agent stop list {Time.time}");
             }
         }
 
@@ -253,19 +263,21 @@ public class PathSupervisor : MonoBehaviour {
                     // ? above is the case where it doesnt include the agent own end node.
                     ag.State = AUGV.AgentState.WaitingForStep;
                     activeAgents.Add(ag.name);
+                    // Debug.Log($"_test: the agent is set to waiting for step if any occupied nodes is in the path more than 2");
                     continue;
                 }
                 if (agentStopList.ContainsKey(ag.name) && Time.time - agentStopList[ag.name] > .5f) {
+                    // Debug.Log($"_test: on update, now removing the agent from the agent stop list after sometime (0.5f)");
                     agentStopList.Remove(ag.name);
                 }
                 if (agentStopList.ContainsKey(ag.name)) {
                     ag.State = AUGV.AgentState.WaitingForStep;
                     activeAgents.Add(ag.name);
+                    // Debug.Log($"_test: the agent is set to waiting for step if it is in the agent stop list");
                     continue;
                 } else {
                     ag.Advance();
                 }
-                
             }
         }
         _trimPaths();
@@ -311,7 +323,11 @@ public class PathSupervisor : MonoBehaviour {
                     path.Last().walkable = false;
                 } else {
                     foreach (var n in path) {
-                        n.walkable = true;
+                        // fixed the bug where loop happen within small gap,
+                        // that the yolo obstacle is being set to walkable,
+                        // thus all the rest of this file method will goes on a loop.
+                        // and all the agent will be stucked in a deadlock.
+                        if (!yoloObstacles.ContainsKey(n)) n.walkable = true;
                     }
                 }
             }
@@ -366,7 +382,17 @@ public class PathSupervisor : MonoBehaviour {
             int n = agentList.Length; // agent how many
             int k = Mathf.Max(step + 3, 5); // maximum step used for wait permutations.
 
+            // DEBUG AREA
+            // Debug.Log($"_test active paths: {node.worldPosition}");
+            // Debug.Log($"_test next active : {string.Join(", ", nextActivePaths.SelectMany(p => p.Key + " " + string.Join(", ", p.Value.Select(n => n.worldPosition.ToString())).ToArray()))}");
+            // foreach (var kvp in nextActivePaths) {
+            //     if (kvp.Key == "AUGV_2" || kvp.Key == "AUGV_5") {
+            //         Debug.Log($"_test next active : {kvp.Key} {string.Join(", ", kvp.Value.Select(n => n.worldPosition.ToString()).ToArray())}");
+            //     }
+            // }
             Debug.DrawRay(node.worldPosition, Vector3.up * 100f, Color.red, 2f);
+            // if (!nextActivePaths.Select(p => p.Value.Any(n => n.walkable)).Any()) return;
+            // DEBUG AREA
 
             // ? mask is the subset of agents that will wait.
             // ? where mask < (1 left shift n) - 1;
@@ -482,7 +508,7 @@ public class PathSupervisor : MonoBehaviour {
                     bestTotalCost = totalCost;
                     foundConflictFree = true;
                     best2 = s;
-                    Debug.Log($"resolved at {depth} path => {string.Join(", ", s.Keys.ToArray())}, {string.Join(", ", s.Values.SelectMany(p => p.Select(n => n.worldPosition.ToString())).ToArray())}");
+                    // Debug.Log($"resolved at {depth} path => {string.Join(", ", s.Keys.ToArray())}, {string.Join(", ", s.Values.SelectMany(p => p.Select(n => n.worldPosition.ToString())).ToArray())}");
                 }
             } else if (!foundConflictFree && totalCost < bestTotalCost) {
                 bestTotalCost = totalCost;
@@ -490,6 +516,19 @@ public class PathSupervisor : MonoBehaviour {
             }
         }
         if (best2 != null) {
+            // DEBUG AREA
+            // foreach (var kvp in best2) {
+            //     var path = kvp.Value;
+                // Debug.Log($"__test every of those path is : {string.Join(", ", path.Select(n => n.worldPosition.ToString()).ToArray())} agent = {kvp.Key}");
+                // Debug.Log($"path before {path.Count}");
+                // if (kvp.Key == "AUGV_2") Debug.Log($"path 0 = {path[0].worldPosition}, path 1 = {path[1].worldPosition}");
+                // if (path.Count > 1 && path[0] == path[1]) {
+                //     path.Insert(0, path[0]);
+                //     Debug.Log($"_forcing new path for {kvp.Key}");
+                // }
+                // Debug.Log($"path after {path.Count}");
+            // }
+            // END DEBUG AREA
             foreach (var kvp in best2) {
                 nextActivePaths[kvp.Key] = kvp.Value;
             }

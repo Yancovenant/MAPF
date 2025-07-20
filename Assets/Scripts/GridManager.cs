@@ -12,7 +12,7 @@ public class GridManager : MonoBehaviour {
     public float nodeRadius;
     public Node[,] grid;
 
-    private float nodeDiameter;
+    public float nodeDiameter;
     private int gridSizeX, gridSizeY;
 
     public bool isReady = false;
@@ -55,8 +55,10 @@ public class GridManager : MonoBehaviour {
     public Node NodeFromWorldPoint(Vector3 worldPosition) {
         // 14.0 - 0.5 = 13.5 -> 13
         // 9.9 - 0.5 = 9.4 -> 9
-        var x = Mathf.FloorToInt((worldPosition.x - transform.position.x) / nodeDiameter);
-        var y = Mathf.FloorToInt((worldPosition.z - transform.position.z) / nodeDiameter);
+        // var x = Mathf.FloorToInt((worldPosition.x - transform.position.x) / nodeDiameter);
+        // var y = Mathf.FloorToInt((worldPosition.z - transform.position.z) / nodeDiameter);
+        var x = Mathf.FloorToInt(worldPosition.x);
+        var y = Mathf.FloorToInt(worldPosition.z);
 
         x = Mathf.Clamp(x, 0, gridSizeX - 1);
         y = Mathf.Clamp(y, 0, gridSizeY - 1);
