@@ -91,12 +91,12 @@ uvicorn webapp.ASGI:app --host 0.0.0.0 --port 8080 --workers 2
 <img width="206" height="332" alt="image" src="https://github.com/user-attachments/assets/b71be797-f0e8-4b29-a523-fd7a76693d36" />
 
 
-
 ---
 
 ### 5. Unity Build/Run
 
 - Press **Play** in the Unity Editor to start the simulation.
+- on Hierarcy select > EnvStart/GlobalProperties, there you will find `Agent YOLO Config` and select the AUGV that you wanted to use YOLO detection **the more agent you set to use YOLO, the more usage device resources**
 
 ---
 
