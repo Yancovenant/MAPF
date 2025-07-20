@@ -75,7 +75,7 @@ public class PathSupervisor : MonoBehaviour {
                 if (!GlobalConfig.Instance.agentYoloConfigs.Exists(a => a.agentId == agent.name)) {
                     GlobalConfig.Instance.agentYoloConfigs.Add(new GlobalConfig.AgentYoloConfig {
                         agentId = agent.name,
-                        useYolo = false
+                        useYolo = true
                     });
                 }
             }
@@ -107,86 +107,7 @@ public class PathSupervisor : MonoBehaviour {
         var cam = agent.GetComponentInChildren<CameraCapture>();
         if (cam == null) return;
 
-        float now = Time.time;
-        int camHeight = GlobalConfig.Instance.resolutionHeight;
-
-        if (!agentObstacleCounts.ContainsKey(agent.name))
-            agentObstacleCounts[agent.name] = new Dictionary<Node, int>();
-        var nodeCounts = agentObstacleCounts[agent.name];
-        // Stop the agent if not already waiting
-        // agentStopList.Add(agent.name);
-
-        var detectedPositions = new List<Vector3>();
-        
-        // Collect all detected node positions for this frame
-        foreach (var item in pixelList) {
-            if (!(item is List<object> coords) || coords.Count < 2) continue;
-            // (feet_x, feet_y)
-            if (!float.TryParse(coords[0].ToString(), out float feet_x)) continue;
-            if (!float.TryParse(coords[1].ToString(), out float feet_y)) continue;
-            // Debug.Log($"PathSupervisor: Feet {feet_x}, {feet_y}");
-
-            // Flip y, [yolo] (0,0) is top left.
-            // Flip y, [unity] (0,0) is bottom left.
-            feet_y = camHeight - feet_y;
-
-            Ray ray = cam.cam.ScreenPointToRay(new Vector3(feet_x, feet_y, 0));
-            if (Physics.Raycast(ray, out RaycastHit hit, 100f, LayerMask.GetMask("Road"))) {
-                // Debug.Log($"PathSupervisor: Ray Casted hit.point vector3: {hit.point}");
-
-                Debug.DrawRay(ray.origin, ray.direction * hit.distance, Color.blue, 2f);
-                GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                marker.transform.position = hit.point + Vector3.up * 0.1f; // Slightly above ground
-                marker.transform.localScale = Vector3.one * 0.2f;
-                GameObject.Destroy(marker, 2f);
-
-                Vector3 trueGridHitpoint = new Vector3(
-                    (hit.point.x - grid.transform.position.x) / grid.nodeDiameter,
-                    0,
-                    (hit.point.z - grid.transform.position.z) / grid.nodeDiameter
-                );
-                Node node = grid.NodeFromWorldPoint(trueGridHitpoint);
-                if (node == null) continue; // skip if no node is found.
-                Node agentNode = grid.NodeFromWorldPoint(agent.transform.position);
-                if (node == null || 
-                    node.walkable == false || 
-                    node == agentNode ||
-                    yoloObstacles.ContainsKey(node)) continue;
-                // Debug.Log($"PathSupervisor: Node {node.worldPosition}");
-                detectedPositions.Add(node.worldPosition);
-            }
-        }
-        
-        // Group detected positions by threshold and only add one detection per group
-        var uniqueNodes = new List<Node>();
-        foreach (var pos in detectedPositions) {
-            if (!uniqueNodes.Any(n => Vector3.Distance(n.worldPosition, pos) < NODE_POSITION_THRESHOLD)) {
-                Node node = grid.NodeFromWorldPoint(pos);
-                // Debug.Log($"PathSupervisor: Node {node.worldPosition}");
-                uniqueNodes.Add(node);
-            }
-        }
-        // For each unique node, increment the count
-        foreach (var node in uniqueNodes) {
-            Node existing = nodeCounts.Keys.FirstOrDefault(n => Vector3.Distance(n.worldPosition, node.worldPosition) < NODE_POSITION_THRESHOLD);
-            if (existing == null || existing != node) existing = node;
-            if (!nodeCounts.ContainsKey(existing)) nodeCounts[existing] = 0;
-            nodeCounts[existing] += 1;
-            if (nodeCounts[existing] > DETECTION_CONFIRM_FRAMES) {
-                if (!yoloObstacles.ContainsKey(existing)) {
-                    yoloObstacles[existing] = now;
-                    if (existing != null) existing.walkable = false;
-                }
-                if (agentStopList.ContainsKey(agent.name)) {
-                    // Debug.Log($"_test: on obstacle detection, now removing the agent from the agent stop list");
-                    agentStopList.Remove(agent.name);
-                }
-            } else {
-                if (!agentStopList.ContainsKey(agent.name)) agentStopList[agent.name] = now;
-                agentStopList[agent.name] = now;
-                // Debug.Log($"_test: on obstacle detection, now adding the agent to the agent stop list {Time.time}");
-            }
-        }
+        _processAgentDetections(agent, cam, pixelList);
 
         // if (agent != null) {
         //     float currentTime = Time.time;
@@ -216,6 +137,86 @@ public class PathSupervisor : MonoBehaviour {
         //         }
         //     }
         // }
+    }
+
+    private void _processAgentDetections(AUGV agent, CameraCapture cam, List<object> pixelList) {
+        if (agent == null || cam == null || pixelList == null) return;
+        float now = Time.time;
+        float camHeight = GlobalConfig.Instance.resolutionHeight;
+
+        // Local for each agent.
+        var localNodeCounts = new Dictionary<Node, int>();
+        var localDetectedPositions = new List<Vector3>();
+
+        foreach (var item in pixelList) {
+            if (!(item is List<object> coords) || coords.Count < 2) continue;
+            if (!float.TryParse(coords[0].ToString(), out float feet_x)) continue;
+            if (!float.TryParse(coords[1].ToString(), out float feet_y)) continue;
+            feet_y = camHeight - feet_y;
+
+            Ray ray = cam.cam.ScreenPointToRay(new Vector3(feet_x, feet_y, 0));
+            if (Physics.Raycast(ray, out RaycastHit hit, 100f, LayerMask.GetMask("Road"))) {
+
+                // DEBUG AREA
+                Debug.DrawRay(ray.origin, ray.direction * hit.distance, Color.blue, 2f);
+                GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                marker.transform.position = hit.point + Vector3.up * 0.1f; // Slightly above ground
+                marker.transform.localScale = Vector3.one * 0.2f;
+                GameObject.Destroy(marker, 2f);
+                // DEBUG AREA
+
+                // Convert the hit point because of our grid is not aligned with the world.
+                Vector3 trueGridHitpoint = new Vector3(
+                    (hit.point.x - grid.transform.position.x) / grid.nodeDiameter,
+                    0,
+                    (hit.point.z - grid.transform.position.z) / grid.nodeDiameter
+                );
+                Node node = grid.NodeFromWorldPoint(trueGridHitpoint);
+                if (node == null) continue;
+                Node agentNode = grid.NodeFromWorldPoint(agent.transform.position);
+                if (node.walkable == false || node == agentNode || yoloObstacles.ContainsKey(node)) continue;
+                localDetectedPositions.Add(node.worldPosition);
+            }
+        }
+    
+        var localUniqueNodes = new List<Node>();
+        foreach (var pos in localDetectedPositions) {
+            if (!localUniqueNodes.Any(n => Vector3.Distance(n.worldPosition, pos) < NODE_POSITION_THRESHOLD)) {
+                Node node = grid.NodeFromWorldPoint(pos);
+                localUniqueNodes.Add(node);
+            }
+        }
+        lock (agentObstacleCounts) {
+            if (!agentObstacleCounts.ContainsKey(agent.name))
+                agentObstacleCounts[agent.name] = new Dictionary<Node, int>();
+            var nodeCounts = agentObstacleCounts[agent.name];
+
+            foreach (var node in localUniqueNodes) {
+                Node existing = nodeCounts.Keys.FirstOrDefault(n => Vector3.Distance(n.worldPosition, node.worldPosition) < NODE_POSITION_THRESHOLD);
+                if (existing == null || existing != node) existing = node;
+                if (!nodeCounts.ContainsKey(existing)) nodeCounts[existing] = 0;
+                nodeCounts[existing] += 1;
+                if (nodeCounts[existing] > DETECTION_CONFIRM_FRAMES) {
+                    lock (yoloObstacles) {
+                        if (!yoloObstacles.ContainsKey(existing)) {
+                            yoloObstacles[existing] = now;
+                            if (existing != null) existing.walkable = false;
+                        }
+                    }
+                    lock (agentStopList) {
+                        if (agentStopList.ContainsKey(agent.name)) {
+                            agentStopList.Remove(agent.name);
+                        }
+                    }
+                } else {
+                    lock (agentStopList) {
+                        if (!agentStopList.ContainsKey(agent.name)) {
+                            agentStopList[agent.name] = now;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     void Update() {
