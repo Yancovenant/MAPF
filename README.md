@@ -20,7 +20,19 @@ MAPF/ <-- Unity Project Parent Path
 
 ## 🚀 First-Time Installation
 
-### 1. Clone the Repository
+### 1. Unity Setup
+
+- Download and import MAPF.unitypackage on this repo.
+- If you starting a new unity project, be sure to name it `MAPF` for simpler integration for this repo.
+- Open the `MAPF` or /yourprojectname folder in Unity Hub.
+- Let Unity import and compile all assets.
+- NativeWebSocket Dependancies, how to install -> [Link Text](#how-to-install-)
+- Go to Scene/MainScene and on Hierarcy tab, select -> EnvStart/GlobalProperties.
+- Fill in the backend server configuration to any best given recommendation, when you start the server -> @see [Link Text](#backend-first-time-config)
+
+---
+
+### 2. Clone the Repository
 
 ```sh
 # Open terminal and cd to the folder where you want the project
@@ -38,13 +50,6 @@ or simply create a new unity project and name it to 'MAPF'
 ```sh
 git clone https://github.com/Yancovenant/MAPF.git
 ```
-
----
-
-### 2. Unity Setup
-
-- Open the `MAPF` folder in Unity Hub.
-- Let Unity import and compile all assets.
 
 ---
 
@@ -82,6 +87,8 @@ uvicorn webapp.ASGI:app --host 0.0.0.0 --port 8080 --workers 2
 #### Backend first time config.
 - When it is the very first time your machine start the backend server, it would automatically run the test itself to determine the best config setup that you can use in your current device resources.
 - Make sure to update it directly inside the unity scene -> GlobalProperties gameObject.
+<img width="362" height="190" alt="image" src="https://github.com/user-attachments/assets/6332d540-892e-4f03-8a67-e249f76a522c" />
+
 
 ---
 
