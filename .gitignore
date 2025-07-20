@@ -12,7 +12,6 @@
 Assets/**/*.meta
 Assets/**/*.asmdef
 Assets/Settings/
-Assets/Tests/
 Assets/TextMesh Pro/
 Assets/Textures/
 Assets/**.inputactions

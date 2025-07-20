@@ -877,7 +877,7 @@ MonoBehaviour:
   resolutionWidth: 640
   resolutionHeight: 320
   jpegQuality: 30
-  selectedMap: 1
+  selectedMap: 0
 --- !u!1 &1963165482
 GameObject:
   m_ObjectHideFlags: 0

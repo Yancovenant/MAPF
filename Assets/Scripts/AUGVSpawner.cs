@@ -23,6 +23,7 @@ public class AUGVSpawner : MonoBehaviour {
             var spawnPoint = mapGen.spawnPoints[i];
             var augv = Instantiate(augvPrefab, spawnPoint, Quaternion.identity);
             augv.name = $"AUGV_{i + 1}";
+            augv.transform.parent = spawnContainer.transform;
             agents.Add(augv);
 
             // Attach CameraCapture if not present

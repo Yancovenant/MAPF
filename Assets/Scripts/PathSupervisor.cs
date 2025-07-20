@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Collections;
 using System.Linq;
 using UnityEngine.Assertions;
+using System;
 
 
 public class PathSupervisor : MonoBehaviour {
@@ -77,6 +78,8 @@ public class PathSupervisor : MonoBehaviour {
                         agentId = agent.name,
                         useYolo = false
                     });
+                    // Sort the agentYoloConfigs by agentId
+                    GlobalConfig.Instance.agentYoloConfigs.Sort((a, b) => string.Compare(a.agentId, b.agentId, StringComparison.Ordinal));
                 }
             }
         }
