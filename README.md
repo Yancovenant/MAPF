@@ -53,7 +53,7 @@ git clone https://github.com/Yancovenant/MAPF.git
   - Open `Window > Package Manager`
   - Click the **+** button > "Add package from git URL"
   - Enter: `https://github.com/endel/NativeWebSocket.git#upm`
-
+ 
 #### Python Backend Dependencies
 ```sh
 cd Backend
@@ -78,7 +78,7 @@ python -m webapp
 
 The server will start at [http://localhost:8080](http://localhost/8080)
 
-### 3. COnfigure Backend Settings
+### 3. Configure Backend Settings
 
 On first run, the backend automatically tests your system and recommends optimal settings:
 - **FPS** for your device
