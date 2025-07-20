@@ -177,7 +177,17 @@ class AUGVMonitor {
         const statusElement = document.getElementById('connection-status');
         if (statusElement) {
             statusElement.textContent = status;
-            statusElement.className = `connection-status ${type}`;
+            statusElement.className = 'badge';
+            switch (type) {
+                case 'connected':
+                    statusElement.className = 'badge bg-success';
+                    break;
+                case 'disconnected':
+                    statusElement.className = 'badge bg-danger';
+                    break;
+                case 'connecting':
+                    statusElement.className = 'badge bg-warning';
+            }
         }
     }
 
@@ -189,21 +199,21 @@ class AUGVMonitor {
         this.removeEmptyState();
 
         const agentElement = document.createElement('div');
-        agentElement.className = 'cctv-feed';
+        agentElement.className = 'cctv-feed col position-relative d-flex flex-column';
         agentElement.id = `agent_${agentId}`;
 
         agentElement.innerHTML = `
-            <div class="cctv-header">
-                <h3 class="agent-name">
+            <div class="cctv-header d-flex justify-content-between align-items-center">
+                <h3 class="agent-name h6 mb-0">
                     <i class="fas fa-robot"></i> ${agentId}
                 </h3>
-                <div class="agent-status">
+                <div class="agent-status d-flex align-items-center gap-2">
                     <span class="status-indicator disconnected"></span>
-                    <span class="status-text">Disconnected</span>
+                    <span class="status-text small" style="color: #bdc3c7;">Disconnected</span>
                 </div>
             </div>
-            <div class="cctv-canvas-container">
-                <div class="no-feed">
+            <div class="cctv-canvas-container position-relative">
+                <div class="no-feed flex-column align-items-center justify-content-center h-100 fs-6">
                     <div class="loading-spinner"></div>
                     <div>Connecting...</div>
                 </div>
@@ -271,5 +281,6 @@ class AUGVMonitor {
 
 // Initialize monitor when page loads
 document.addEventListener('DOMContentLoaded', () => {
+    document.head.innerHTML += `<link rel="stylesheet" href="/static/css/monitor.css">`;
     new AUGVMonitor();
 }); 
