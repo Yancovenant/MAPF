@@ -88,7 +88,7 @@ uvicorn webapp.ASGI:app --host 0.0.0.0 --port 8080 --workers 2
 - When it is the very first time your machine start the backend server, it would automatically run the test itself to determine the best config setup that you can use in your current device resources.
 - Make sure to update it directly inside the unity scene -> GlobalProperties gameObject.
 <img width="362" height="190" alt="image" src="https://github.com/user-attachments/assets/6332d540-892e-4f03-8a67-e249f76a522c" />
-![Uploading image.png…]()
+<img width="206" height="332" alt="image" src="https://github.com/user-attachments/assets/b71be797-f0e8-4b29-a523-fd7a76693d36" />
 
 
 
