@@ -26,7 +26,15 @@ MAPF/ <-- Unity Project Parent Path
 # Open terminal and cd to the folder where you want the project
 cd /path/to/your/projects # Make sure that you cd to your unity project parent first.
 ```
-**Make sure that before cloning this repositry to 'cd' to your path project first, to make sure that unity & backend is integrated completly without any future error.**
+
+**!Important!**
+rename your project unity into 'MAPF'.
+otherwise you need to copy&paste the /Backend and /Assets folder to your project.
+
+or simply create a new unity project and name it to 'MAPF'
+
+**Make sure that before cloning this repository to 'cd' to your path project first, to make sure that unity & backend is integrated completly without any future error.**
+
 ```sh
 git clone https://github.com/Yancovenant/MAPF.git
 ```
@@ -36,7 +44,6 @@ git clone https://github.com/Yancovenant/MAPF.git
 ### 2. Unity Setup
 
 - Open the `MAPF` folder in Unity Hub.
-- Use **Unity 2022.3 LTS** or newer (recommended).
 - Let Unity import and compile all assets.
 
 ---
@@ -45,26 +52,18 @@ git clone https://github.com/Yancovenant/MAPF.git
 
 > **Backend is inside the `Backend/` folder.**
 
-#### a. Install Python (3.10+ recommended)
-- [Download Python](https://www.python.org/downloads/)
-
-#### b. Create a virtual environment (optional but recommended)
+#### a. Install backend dependencies
 
 ```sh
 cd Backend
-python -m venv mlir_venv
-# Activate the venv:
-# On Windows:
-mlir_venv\Scripts\activate
-# On Mac/Linux:
-source mlir_venv/bin/activate
-```
 
-#### c. Install backend dependencies
-
-```sh
+# Install backend
 pip install --upgrade pip
 pip install -r requirements.txt
+
+# or simpy do
+
+pip install -e .
 ```
 
 ---
@@ -85,17 +84,21 @@ uvicorn webapp.ASGI:app --host 0.0.0.0 --port 8080 --workers 2
 ### 5. Unity Build/Run
 
 - Press **Play** in the Unity Editor to start the simulation.
-- To build a standalone app:  
-  `File → Build Settings → Build` (choose your platform).
 
 ---
 
 ## 🧩 Dependencies
 
 ### Unity
-- Unity 2022.3 LTS or newer
-- [NativeWebSocket](https://github.com/endel/NativeWebSocket) (for agent-backend comms)
+- [NativeWebSocket](https://github.com/endel/NativeWebSocket) (for agent-backend communication)
 - No extra Unity packages required (all scripts included)
+
+#### How to Install ?
+- Window -> Assets/Package Management
+- [Top Left Corner] (+) plus icon, add from git url
+```sh
+https://github.com/endel/NativeWebSocket.git#upm
+```
 
 ### Python Backend
 - Python 3.10+
@@ -111,14 +114,15 @@ uvicorn webapp.ASGI:app --host 0.0.0.0 --port 8080 --workers 2
 
 ## 🗺️ Features
 
-- **Multi-agent pathfinding** with conflict resolution
+- **Multi-agent A* pathfinding** with conflict resolution
 - **YOLO obstacle detection** (Python backend)
 - **Map editor** (web frontend, Konva.js)
 - **Live agent monitoring** (web dashboard)
 - **Dynamic map loading** (Unity + backend)
-- **WebSocket communication** (Unity ↔ Python)
+- **WebSocket communication** (Unity <-> Python)
 - **Warehouse/road placement rules** (map editor)
 - **Local storage for map drafts**
+- **Client input AUGV's routes**
 
 ---
 
@@ -139,6 +143,12 @@ uvicorn webapp.ASGI:app --host 0.0.0.0 --port 8080 --workers 2
   - Backend processes frames and detections in batches for better throughput.
 - **Numba JIT:**
   - Backend uses Numba to speed up critical math functions.
+- **Onstart Config:**
+  - Backend for the very first time, will run the test itself to recommend:
+    - The best FPS for your current device;
+    - The best YOLO model (onnx, pt);
+    - The best inference method (threading, multi-processing);
+    - The best maximum number of AUGV that will use YOLO.
 
 ---
 
@@ -151,6 +161,8 @@ python -m webapp
 
 # Install backend dependencies
 pip install -r requirements.txt
+# Or
+pip install -e .
 
 # Activate Unity project
 # (Open MAPF folder in Unity Hub)
