@@ -1,4 +1,4 @@
-# MAPF: Multi-Agent Pathfinding System
+<img width="1920" height="997" alt="image" src="https://github.com/user-attachments/assets/b535672c-cf2e-43c8-b3bc-bb06f350fb77" /># MAPF: Multi-Agent Pathfinding System
 
 > **Unity + Python Backend**  
 > Obstacle detection, pathfinding, map editing, and agent monitoring.
@@ -93,11 +93,16 @@ uvicorn webapp.ASGI:app --host 0.0.0.0 --port 8080 --workers 2
 
 #### Dashboard Server
 - `/monitor`
+  <img width="1920" height="997" alt="image" src="https://github.com/user-attachments/assets/18a23d17-e5ef-417a-b2c5-dc565052b536" />
+  <img width="501" height="984" alt="image" src="https://github.com/user-attachments/assets/79c6eb53-ad7b-47cb-b016-b13dccf52d44" />
 
 - `/map`
-
+  <img width="1920" height="997" alt="image" src="https://github.com/user-attachments/assets/18f12278-224d-4fc4-b242-12a9babd5a8e" />
+  <img width="501" height="984" alt="image" src="https://github.com/user-attachments/assets/f621d67c-7ab8-491a-97a3-52b5fcb1db2c" />
+  
 - `/client`
-
+  <img width="1920" height="997" alt="image" src="https://github.com/user-attachments/assets/78092d2e-591e-4bac-b984-e517b278945e" />
+  <img width="501" height="984" alt="image" src="https://github.com/user-attachments/assets/19f1ff89-fafc-4d67-af13-e7d8f3e4f4ec" />
 
 ---
 
