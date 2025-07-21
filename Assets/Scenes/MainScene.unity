@@ -869,8 +869,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   serverUrl: localhost
-  serverPort: 8080
-  targetedFps: 30
+  serverPort: 8081
+  targetedFps: 10
   unityPort: 8051
   YOLO_OBSTACLE_TIMEOUT: 30
   agentYoloConfigs: []
