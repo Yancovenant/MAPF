@@ -15,7 +15,7 @@ else it will use the cached setting and ask for user input to retest the environ
 import torch
 import os
 from ultralytics import YOLO
-import numpy as np
+import numpy as np, socket
 import onnxruntime as ort
 import json as _json
 CACHE_PATH = os.path.join(os.path.dirname(__file__), '../../.recommend_cache.json')
@@ -48,6 +48,11 @@ CONFIG = {
     },
     # Number of images to process in benchmark
     'BENCHMARK_IMAGES': 60,
+
+    # Server Port
+    'SERVER_PORT': 8080,
+    # Unity Port
+    'UNITY_PORT': 8051
 }
 
 def get_onnx_session(model_path, backend_device='cpu'):
@@ -255,3 +260,19 @@ def recommend_settings():
     for k, v in cache_out.items():
         print(f"{k}: {v}")
     print("===============================================\n") 
+
+def find_free_port(start, max_tries=100):
+    port = start
+    for _ in range(max_tries):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(('', port))
+                return port
+            except OSError:
+                port += 1
+    raise RuntimeError(f"No free ports found in range {start}-{start+max_tries}")
+
+def configure_ports():
+    CONFIG['SERVER_PORT'] = find_free_port(8080)
+    CONFIG['UNITY_PORT'] = find_free_port(8051)
+    return CONFIG['SERVER_PORT'], CONFIG['UNITY_PORT']

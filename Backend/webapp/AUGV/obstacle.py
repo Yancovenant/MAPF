@@ -48,7 +48,6 @@ from webapp.tools.config import CONFIG, get_onnx_session
 import cv2
 
 AGENT_QUEUES, AGENT_STATE = {}, {}
-UNITY_HOST, UNITY_PORT = "localhost", 8051
 AGENT_OUT_QUEUES = defaultdict(asyncio.Queue)
 
 # TRACK ALL RUNGING MULTIPROCESSING AGENTS

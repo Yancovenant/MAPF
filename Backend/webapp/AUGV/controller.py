@@ -178,8 +178,9 @@ async def save_map(req: Request):
 async def send_routes(req: Request):
     body = await req.json()
     try:
+        unity_port = CONFIG['UNITY_PORT']
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(("localhost", 8051))
+        s.connect(("localhost", unity_port))
         s.send(json.dumps(body).encode())
         s.close()
         return JSONResponse({"status": "ok"})
