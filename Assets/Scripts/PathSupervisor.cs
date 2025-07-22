@@ -647,10 +647,26 @@ public class PathSupervisor : MonoBehaviour {
         var result = new Dictionary<(Node, int), List<string>>();
         foreach (var kvp in costPaths) {
             if (kvp.Value?.Count > 0) {
-                foreach (var (node, step) in kvp.Value) {
+                int pathLength = kvp.Value.Count;
+                for (int i = 0; i < pathLength; i++) {
+                    var (node, step) = kvp.Value[i];
                     var key = (node, step);
+                    // Current step
                     if (!result.ContainsKey(key)) result[key] = new List<string>();
                     if (!result[key].Contains(kvp.Key)) result[key].Add(kvp.Key);
+
+                    // Step before (not first)
+                    if (i > 0) {
+                        var keyBefore = (node, step - 1);
+                        if (!result.ContainsKey(keyBefore)) result[keyBefore] = new List<string>();
+                        if (!result[keyBefore].Contains(kvp.Key)) result[keyBefore].Add(kvp.Key);
+                    }
+                    // Step after (not last)
+                    if (i < pathLength - 1) {
+                        var keyAfter = (node, step + 1);
+                        if (!result.ContainsKey(keyAfter)) result[keyAfter] = new List<string>();
+                        if (!result[keyAfter].Contains(kvp.Key)) result[keyAfter].Add(kvp.Key);
+                    }
                 }
             }
         }

@@ -298,8 +298,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 38a8847fc325789488dd88902b141bf9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 2
-  rotationSpeed: 4
+  moveSpeed: 5
+  rotationSpeed: 12
   waitAtWaypoint: 2
 --- !u!114 &7806383767051100384
 MonoBehaviour:
@@ -314,6 +314,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   agentId: 
+  cam: {fileID: 0}
 --- !u!1 &2297301886940056389
 GameObject:
   m_ObjectHideFlags: 0
